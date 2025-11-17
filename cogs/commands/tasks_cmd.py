@@ -86,9 +86,10 @@ class TasksCog(commands.Cog):
             description_text = "\n".join(task_list) if task_list else "No fake tasks assigned yet!"
             color = discord.Color.red()
         else:
-            title = f"📋 {player.name}'s Tasks ({player.role})"
+            ghost_prefix = "👻 " if not player.alive else ""
+            title = f"📋 {ghost_prefix}{player.name}'s Tasks ({player.role})"
             description_text = "\n".join(task_list) if task_list else "No tasks assigned yet!"
-            color = discord.Color.blue()
+            color = discord.Color.purple() if not player.alive else discord.Color.blue()
 
         embed = discord.Embed(
             title=title,
@@ -105,7 +106,14 @@ class TasksCog(commands.Cog):
                 inline=False
             )
         
-        # Add role-specific bonus info
+        if not player.alive and player.role != 'Impostor':
+            embed.add_field(
+                name="👻 Ghost Status",
+                value="You're dead, but you can still help the crew win by completing tasks!\n"
+                      "Your tasks still contribute to the crew's victory.",
+                inline=False
+            )
+        
         if player.role == 'Scientist':
             embed.add_field(
                 name="🧪 Scientist Bonus",
@@ -165,9 +173,9 @@ class TasksCog(commands.Cog):
 
         player = game.players[uid]
 
-        if not player.alive:
+        if not player.alive and player.role == 'Impostor':
             await interaction.response.send_message(
-                "💀 You are dead and cannot complete tasks!", ephemeral=True
+                "💀 Dead impostors cannot complete tasks!", ephemeral=True
             )
             return
 
@@ -208,12 +216,17 @@ class TasksCog(commands.Cog):
             if interaction.channel and isinstance(
                 interaction.channel, discord.TextChannel
             ):
-                await interaction.channel.send(
-                    f"✅ **{player.name}** completed: {task.task_info['emoji']} {task.task_info['name']}! "
-                    f"({player.task_progress})"
-                )
-
-                if player.role != "Impostor":
+                if player.role == "Impostor":
+                    await interaction.channel.send(
+                        f"✅ **{player.name}** completed: {task.task_info['emoji']} {task.task_info['name']}! "
+                        f"({player.task_progress})"
+                    )
+                else:
+                    ghost_prefix = "👻 " if not player.alive else ""
+                    await interaction.channel.send(
+                        f"✅ {ghost_prefix}**{player.name}** completed: {task.task_info['emoji']} {task.task_info['name']}! "
+                        f"({player.task_progress})"
+                    )
                     await check_and_announce_winner(game, interaction.channel, "tasks", self.bot)
 
         view = get_task_view(task, on_task_complete)

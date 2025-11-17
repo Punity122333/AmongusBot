@@ -95,61 +95,91 @@ async def create_player_card(player_name: str, avatar_url: str, color: str, role
     return buffer
 
 
-async def create_role_reveal_card(player_name: str, avatar_url: str, role: str, task_count: int = 0) -> io.BytesIO:
+async def create_role_reveal_card(player_name: str, role: str, task_count: int = 0, avatar_url: str = "") -> io.BytesIO:
     """Create a dramatic role reveal card"""
-    # Create base with gradient
     img = Image.new('RGBA', (ROLE_CARD_WIDTH, ROLE_CARD_HEIGHT), color=(20, 20, 30, 255))
     draw = ImageDraw.Draw(img)
     
-    # Background based on role
     if role == 'Impostor':
         bg_color = (100, 20, 20, 200)
         text_color = (255, 100, 100)
+        role_emoji = "🔪"
+        mission_text = "Eliminate all crewmates to win!"
+        details = [
+            "• Use /kill to eliminate crewmates",
+            "• Use /sabotage to create chaos",
+            "• Use /vent to move quickly",
+            "• Fake tasks to blend in"
+        ]
+    elif role == 'Scientist':
+        bg_color = (20, 80, 120, 200)
+        text_color = (100, 220, 255)
+        role_emoji = "🧪"
+        mission_text = f"Complete {task_count} tasks faster!"
+        details = [
+            "• Task completion speed: 1.5x",
+            "• Use /tasks to view your task list",
+            "• Use /dotask to complete tasks",
+            "• Help the crew win quickly"
+        ]
+    elif role == 'Engineer':
+        bg_color = (80, 60, 20, 200)
+        text_color = (255, 200, 100)
+        role_emoji = "🔧"
+        mission_text = f"Complete {task_count} tasks & use vents!"
+        details = [
+            "• Can use vents like impostors",
+            "• Sabotage fix speed: 2x",
+            "• Use /vent to move through vents",
+            "• Complete tasks to help crew"
+        ]
     else:
         bg_color = (20, 50, 100, 200)
         text_color = (100, 200, 255)
+        role_emoji = "👷"
+        mission_text = f"Complete all {task_count} tasks!"
+        details = [
+            "• Use /tasks to view your task list",
+            "• Use /dotask to complete tasks",
+            "• Watch for suspicious behavior",
+            "• Report bodies and vote wisely"
+        ]
     
-    # Draw gradient background
     for i in range(ROLE_CARD_HEIGHT):
         alpha = int(255 * (i / ROLE_CARD_HEIGHT))
         color = (*bg_color[:3], min(alpha, bg_color[3]))
         draw.rectangle((0, i, ROLE_CARD_WIDTH, i+1), fill=color)
     
-    # Download avatar
+    title_font = get_font(70, bold=True)
+    title_text = role.upper()
+    title_bbox = draw.textbbox((0, 0), title_text, font=title_font)
+    title_width = title_bbox[2] - title_bbox[0]
+    draw.text((ROLE_CARD_WIDTH//2 - title_width//2, 50), title_text, fill=text_color, font=title_font)
+    
     avatar = await download_avatar(avatar_url)
     if avatar:
-        avatar_size = 250
+        avatar_size = 150
         avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
         
-        # Circular mask
         mask = Image.new('L', (avatar_size, avatar_size), 0)
         mask_draw = ImageDraw.Draw(mask)
         mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
         avatar.putalpha(mask)
         
-        img.paste(avatar, (100, ROLE_CARD_HEIGHT//2 - avatar_size//2), avatar)
+        img.paste(avatar, (ROLE_CARD_WIDTH//2 - avatar_size//2, 170), avatar)
     
-    # Draw role text
-    role_font = get_font(80, bold=True)
-    role_text = role.upper()
-    role_bbox = draw.textbbox((0, 0), role_text, font=role_font)
-    draw.text((500, 150), role_text, fill=text_color, font=role_font)
     
-    # Draw player name
-    name_font = get_font(45, bold=True)
-    draw.text((500, 300), player_name, fill=(255, 255, 255), font=name_font)
+    desc_font = get_font(28)
+    y = 440
+    draw.text((ROLE_CARD_WIDTH//2 - draw.textbbox((0, 0), mission_text, font=desc_font)[2]//2, y), mission_text, fill=(255, 255, 255), font=desc_font)
+    y += 50
     
-    # Draw task info
-    if role == 'Crewmate':
-        task_font = get_font(30)
-        task_text = f"You have {task_count} tasks to complete"
-        draw.text((500, 400), task_text, fill=(200, 200, 200), font=task_font)
-    else:
-        task_font = get_font(30)
-        task_text = "Eliminate all crewmates to win!"
-        draw.text((500, 400), task_text, fill=(255, 150, 150), font=task_font)
+    for line in details:
+        bbox = draw.textbbox((0, 0), line, font=desc_font)
+        width = bbox[2] - bbox[0]
+        draw.text((ROLE_CARD_WIDTH//2 - width//2, y), line, fill=(200, 220, 255), font=desc_font)
+        y += 35
     
-    # Save to BytesIO
     buffer = io.BytesIO()
     img.save(buffer, 'PNG')
     buffer.seek(0)
@@ -350,6 +380,7 @@ async def create_vote_result_card(voted_player: str, votes: int, was_impostor: b
     img.save(buffer, 'PNG')
     buffer.seek(0)
     return buffer
+
 
 
 async def create_death_card(player_name: str, avatar_url: str) -> io.BytesIO:

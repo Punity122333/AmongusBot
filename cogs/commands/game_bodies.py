@@ -7,8 +7,121 @@ import random
 import asyncio
 from typing import Optional
 from .game_meeting import trigger_meeting
-from .game_bodies import BodyDiscoveryView
 from amongus.card_generator import create_emergency_meeting_card
+
+
+async def safe_dm_user(user: discord.User | discord.Member, **kwargs):
+    for attempt in range(7):
+        try:
+            await user.send(**kwargs)
+            return
+        except discord.errors.HTTPException:
+            if attempt < 6:
+                await asyncio.sleep(3)
+            else:
+                pass
+
+
+async def teleport_and_report_body(
+    bot: discord.Client,
+    game,
+    channel: discord.TextChannel,
+    victim,
+    body_location: str
+):
+    await asyncio.sleep(random.uniform(3, 8))
+    
+    if game.phase != 'tasks':
+        return
+    
+    alive_non_impostors = [
+        p for p in game.alive_players()
+        if p.role != "Impostor" and p.user_id != victim.user_id
+    ]
+    
+    if not alive_non_impostors:
+        return
+    
+    reporter = random.choice(alive_non_impostors)
+    
+    old_location = reporter.location
+    reporter.location = body_location
+    
+    try:
+        nearby_players = _get_nearby_players(game, victim, reporter)
+        
+        game.nearby_players_last_meeting = nearby_players
+        
+        await channel.send(
+            f"🚨 **{reporter.name}** rushed to **{body_location}** and discovered **{victim.name}'s** body, calling an emergency meeting!"
+        )
+        
+        if nearby_players:
+            players_list = ", ".join([f"**{p}**" for p in nearby_players])
+            await channel.send(
+                f"🗣️ **{reporter.name}** says: \"I saw {players_list} near the body!\""
+            )
+        else:
+            await channel.send(
+                f"🗣️ **{reporter.name}** says: \"I got here quickly and found the body!\""
+            )
+        
+        await trigger_meeting(game, channel, f"{reporter.name} (found body)", bot)
+    except Exception as e:
+        print(f"Error in teleport_and_report_body: {e}")
+
+
+async def schedule_teleport_and_report(
+    bot: discord.Client,
+    game,
+    channel: discord.TextChannel,
+    victim,
+    body_location: str,
+    impostor_view
+):
+    await asyncio.sleep(random.uniform(8, 15))
+    
+    if impostor_view.responded:
+        return
+    
+    if game.phase != 'tasks':
+        return
+    
+    alive_non_impostors = [
+        p for p in game.alive_players()
+        if p.role != "Impostor" and p.user_id != victim.user_id
+    ]
+    
+    if not alive_non_impostors:
+        return
+    
+    reporter = random.choice(alive_non_impostors)
+    
+    old_location = reporter.location
+    reporter.location = body_location
+    
+    try:
+        nearby_players = _get_nearby_players(game, victim, reporter)
+        
+        game.nearby_players_last_meeting = nearby_players
+        
+        await channel.send(
+            f"🚨 **{reporter.name}** rushed to **{body_location}** and discovered **{victim.name}'s** body, calling an emergency meeting!"
+        )
+        
+        if nearby_players:
+            players_list = ", ".join([f"**{p}**" for p in nearby_players])
+            await channel.send(
+                f"🗣️ **{reporter.name}** says: \"I saw {players_list} near the body!\""
+            )
+        else:
+            await channel.send(
+                f"🗣️ **{reporter.name}** says: \"I got here quickly and found the body!\""
+            )
+        
+        await trigger_meeting(game, channel, f"{reporter.name} (found body)", bot)
+    except Exception as e:
+        print(f"Error in schedule_teleport_and_report: {e}")
 
 
 class BodyDiscoveryView(ui.View):
@@ -29,6 +142,10 @@ class BodyDiscoveryView(ui.View):
         if self.responded:
             await interaction.response.send_message("You already responded!", ephemeral=True)
             return
+        
+        if self.game.phase == "meeting":
+            await interaction.response.send_message("❌ A meeting has already been called!", ephemeral=True)
+            return
             
         self.responded = True
 
@@ -43,10 +160,14 @@ class BodyDiscoveryView(ui.View):
         )
         embed.set_footer(text="The crew will now discuss who the impostor might be.")
         
-        await interaction.response.edit_message(
-            embed=embed,
-            view=self
-        )
+        try:
+            await interaction.response.edit_message(
+                embed=embed,
+                view=self
+            )
+        except discord.errors.NotFound:
+            await interaction.response.send_message("❌ Meeting already called by someone else!", ephemeral=True)
+            return
         
         nearby_players = _get_nearby_players(self.game, self.victim, self.game.players.get(interaction.user.id))
         
@@ -193,7 +314,7 @@ async def notify_body_discovery(
                         )
                         
                         view = BodyDiscoveryView(bot, game, channel, victim, discoverer.name, room_name)
-                        await user.send(embed=embed, view=view)
+                        await safe_dm_user(user, embed=embed, view=view)
             except Exception as e:
                 print(f"Error sending body discovery DM to player: {e}")
         return

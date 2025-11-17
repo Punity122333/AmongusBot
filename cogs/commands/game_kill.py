@@ -7,6 +7,18 @@ from typing import cast
 from .game_utils import check_and_announce_winner
 
 
+async def safe_dm_user(user: discord.User | discord.Member, **kwargs):
+    for attempt in range(7):
+        try:
+            await user.send(**kwargs)
+            return
+        except discord.errors.HTTPException:
+            if attempt < 6:
+                await asyncio.sleep(3)
+            else:
+                pass
+
+
 class KillView(ui.View):
     def __init__(self, game, killer, bot, from_vent=False):
         super().__init__(timeout=30)
@@ -36,6 +48,8 @@ class KillView(ui.View):
 
     def _create_kill_callback(self, target):
         async def callback(interaction: discord.Interaction):
+            await interaction.response.defer()
+            
             target.alive = False
             self.killer.kill_cooldown = self.game.kill_cooldown
 
@@ -74,7 +88,7 @@ class KillView(ui.View):
                                     inline=False
                                 )
                                 embed.set_footer(text="Use /reportbody to call a meeting!")
-                                await witness_user.send(embed=embed)
+                                await safe_dm_user(witness_user, embed=embed)
                         except Exception as e:
                             print(f"Error DMing witness: {e}")
 
@@ -94,7 +108,7 @@ class KillView(ui.View):
                             )
                             embed.set_image(url="attachment://death.png")
                             
-                            await victim_user.send(embed=embed, file=file)
+                            await safe_dm_user(victim_user, embed=embed, file=file)
                     except Exception as e:
                         print(f"Error DMing victim: {e}")
 
@@ -129,7 +143,7 @@ class KillView(ui.View):
                         
                         view = BodyDiscoveryView(self.bot, self.game, interaction.channel, target, self.killer.name, self.killer.location)
                         
-                        await killer_user.send(embed=embed, view=view)
+                        await safe_dm_user(killer_user, embed=embed, view=view)
                 except Exception as e:
                     print(f"Error sending impostor body discovery: {e}")
 
@@ -156,7 +170,7 @@ class KillView(ui.View):
                 except Exception as e:
                     print(f"Error in kill notification: {e}")
 
-            await interaction.response.edit_message(
+            await interaction.edit_original_response(
                 content=f"🔪 You killed **{target.name}**!\nKill cooldown: {self.game.kill_cooldown}s",
                 view=None,
             )

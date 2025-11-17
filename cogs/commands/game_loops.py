@@ -11,6 +11,18 @@ from .game_meeting import trigger_meeting
 from .game_utils import check_and_announce_winner
 
 
+async def safe_dm_user(user: discord.User | discord.Member, **kwargs):
+    for attempt in range(7):
+        try:
+            await user.send(**kwargs)
+            return
+        except discord.errors.HTTPException:
+            if attempt < 6:
+                await asyncio.sleep(3)
+            else:
+                pass
+
+
 def find_shortest_path(map_layout: MapLayout, start: str, end: str) -> Optional[List[str]]:
     if start == end:
         return [start]
@@ -202,11 +214,15 @@ async def bot_impostor_behavior(
                                         )
                                         embed.set_image(url="attachment://death.png")
                                         
-                                        await victim_user.send(embed=embed, file=file)
+                                        await safe_dm_user(victim_user, embed=embed, file=file)
                             except Exception as e:
                                 print(f"Error DMing victim: {e}")
                         
-                        await notify_body_discovery(bot, game, channel, victim, player.location)
+                        if random.random() < 0.35:
+                            from .game_bodies import teleport_and_report_body
+                            asyncio.create_task(teleport_and_report_body(bot, game, channel, victim, player.location))
+                        else:
+                            await notify_body_discovery(bot, game, channel, victim, player.location)
                         
                         if await check_and_announce_winner(game, channel, "kill", bot):
                             return

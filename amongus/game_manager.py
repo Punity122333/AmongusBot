@@ -1,5 +1,5 @@
 """Database-aware game manager that wraps core classes"""
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, cast
 from .core import Player, AmongUsGame
 from .database import GameDatabase
 from .tasks import Task, generate_tasks_for_player
@@ -13,7 +13,7 @@ class DatabasePlayer(Player):
         super().__init__(*args, **kwargs)
         self.db = db
         self.channel_id = channel_id
-        self.db_id: Optional[int] = None  # Database row ID
+        self.db_id: Optional[int] = None
     
     async def save(self):
         """Save player state to database"""
@@ -54,12 +54,10 @@ class DatabasePlayer(Player):
 
 
 class DatabaseGame(AmongUsGame):
-    """Game class with database persistence"""
     
-    def __init__(self, db: GameDatabase, guild_id: int, channel_id: int, max_players: int = 10):
-        super().__init__(guild_id, channel_id, max_players)
+    def __init__(self, db: GameDatabase, guild_id: int, channel_id: int, max_players: int = 10, impostors: int = 1, scientists: int = 0, engineers: int = 0):
+        super().__init__(guild_id, channel_id, max_players, impostors, scientists, engineers)
         self.db = db
-        self.players: Dict[int, DatabasePlayer] = {}  # type: ignore # Updated to match base class type
     
     async def save(self):
         """Save game state to database"""
@@ -131,6 +129,41 @@ class DatabaseGame(AmongUsGame):
             await self.db.remove_player(self.channel_id, user_id)
             del self.players[user_id]
     
+    async def add_dummies_if_needed(self):
+        while len(self.players) < self.max_players:
+            dummy_id = -(len(self.players) + 1)
+            name = f'Dummy{abs(dummy_id)}'
+            dummy = await self.add_player(dummy_id, name, "", is_bot=True)
+
+            current_impostors = sum(1 for p in self.players.values() if p.role == 'Impostor')
+            current_scientists = sum(1 for p in self.players.values() if p.role == 'Scientist')
+            current_engineers = sum(1 for p in self.players.values() if p.role == 'Engineer')
+
+            available_roles = []
+            if current_impostors < self.impostor_count:
+                available_roles.append('Impostor')
+            if current_scientists < self.scientist_count:
+                available_roles.append('Scientist')
+            if current_engineers < self.engineer_count:
+                available_roles.append('Engineer')
+            if not available_roles:
+                available_roles.append('Crewmate')
+
+            assigned_role = random.choice(available_roles)
+            dummy.assign_role(assigned_role)
+            dummy.assign_tasks()
+
+            if assigned_role == 'Impostor':
+                if dummy_id not in self.impostors:
+                    self.impostors.append(dummy_id)
+
+            if hasattr(dummy, 'save'):
+                await dummy.save()
+                if hasattr(dummy, 'save_tasks') and dummy.db_id:
+                    await dummy.save_tasks()
+        
+        await self.db.set_impostors(self.channel_id, self.impostors)
+    
     async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0):  # type: ignore[override]
         """Assign roles and save to database"""
         ids = list(self.players.keys())
@@ -138,12 +171,10 @@ class DatabaseGame(AmongUsGame):
         impostor_count = min(impostor_count, max(1, len(ids) // 3))
         self.impostors = ids[:impostor_count]
         
-        # Calculate special role counts
         max_special = max(0, len(ids) - impostor_count)
         scientists = min(scientists, max_special // 2)
         engineers = min(engineers, max_special - scientists)
         
-        # Assign roles
         remaining_ids = [uid for uid in ids if uid not in self.impostors]
         random.shuffle(remaining_ids)
         
@@ -151,27 +182,25 @@ class DatabaseGame(AmongUsGame):
         engineer_ids = remaining_ids[scientists:scientists + engineers]
         
         for uid, player in self.players.items():
+            db_player = cast(DatabasePlayer, player)
             if uid in self.impostors:
-                player.assign_role('Impostor')
-                player.assign_tasks()  # Give impostors fake tasks to blend in
+                db_player.assign_role('Impostor')
+                db_player.assign_tasks()
             elif uid in scientist_ids:
-                player.assign_role('Scientist')
-                player.assign_tasks()
+                db_player.assign_role('Scientist')
+                db_player.assign_tasks()
             elif uid in engineer_ids:
-                player.assign_role('Engineer')
-                player.assign_tasks()
+                db_player.assign_role('Engineer')
+                db_player.assign_tasks()
             else:
-                player.assign_role('Crewmate')
-                player.assign_tasks()
+                db_player.assign_role('Crewmate')
+                db_player.assign_tasks()
             
-            # Save player to database
-            await player.save()
+            await db_player.save()
             
-            # Save tasks to database
-            if player.db_id and player.tasks:
-                await player.save_tasks()
+            if db_player.db_id and db_player.tasks:
+                await db_player.save_tasks()
         
-        # Save impostor list
         await self.db.set_impostors(self.channel_id, self.impostors)
     
     async def cast_vote(self, voter_id: int, target_id: int):  # type: ignore[override]
@@ -194,8 +223,11 @@ class DatabaseGame(AmongUsGame):
         if not game_data:
             return None
         
-        # Create game instance
-        game = cls(db, game_data['guild_id'], channel_id, game_data['max_players'])
+        impostor_count = game_data.get('impostor_count', 1)
+        scientist_count = game_data.get('scientist_count', 0)
+        engineer_count = game_data.get('engineer_count', 0)
+        
+        game = cls(db, game_data['guild_id'], channel_id, game_data['max_players'], impostor_count, scientist_count, engineer_count)
         game.phase = game_data['phase']
         game.game_code = game_data['game_code']
         game.min_players = game_data['min_players']
@@ -256,16 +288,12 @@ class GameManager:
         self.db = db
         self._cache: Dict[int, DatabaseGame] = {}
     
-    async def create_game(self, guild_id: int, channel_id: int, game_code: str, max_players: int = 10) -> DatabaseGame:
-        """Create a new game"""
-        # Create in database
-        await self.db.create_game(channel_id, guild_id, game_code, max_players)
+    async def create_game(self, guild_id: int, channel_id: int, game_code: str, max_players: int = 10, impostors: int = 1, scientists: int = 0, engineers: int = 0) -> DatabaseGame:
+        await self.db.create_game(channel_id, guild_id, game_code, max_players, impostors, scientists, engineers)
         
-        # Create game object
-        game = DatabaseGame(self.db, guild_id, channel_id, max_players)
+        game = DatabaseGame(self.db, guild_id, channel_id, max_players, impostors, scientists, engineers)
         game.game_code = game_code
         
-        # Cache it
         self._cache[channel_id] = game
         
         return game

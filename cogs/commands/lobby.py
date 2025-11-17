@@ -3,9 +3,12 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from amongus.game_manager import GameManager
-from amongus.card_generator import create_lobby_card
-from typing import Optional
+from amongus.game_manager import GameManager, DatabasePlayer
+from amongus.card_generator import (
+    create_lobby_card,
+    create_role_reveal_card
+)
+from typing import Optional, cast
 
 
 class LobbyCog(commands.Cog):
@@ -41,9 +44,12 @@ class LobbyCog(commands.Cog):
         name="create", description="Create an Among Us lobby in this channel"
     )
     @app_commands.describe(
-        max_players="Maximum number of players (default: 10, range: 4-15)"
+        max_players="Maximum number of players (default: 10, range: 4-15)",
+        impostors="Number of impostors (default: 1)",
+        scientists="Number of Scientists (default: 0)",
+        engineers="Number of Engineers (default: 0)"
     )
-    async def create(self, interaction: discord.Interaction, max_players: int = 10):
+    async def create(self, interaction: discord.Interaction, max_players: int = 10, impostors: int = 1, scientists: int = 0, engineers: int = 0):
         if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 "This command must be used in a server text channel.", ephemeral=True
@@ -59,7 +65,6 @@ class LobbyCog(commands.Cog):
         await interaction.response.defer(thinking=True)
         ch_id = interaction.channel.id
 
-        # Check if game already exists
         if await self.game_manager.game_exists(ch_id):
             await interaction.followup.send(
                 "A game already exists in this channel.", ephemeral=True
@@ -78,20 +83,52 @@ class LobbyCog(commands.Cog):
             )
             return
 
-        # Generate game code
+        max_impostors = max(1, max_players // 3)
+        if impostors < 1:
+            await interaction.followup.send(
+                "❌ Must have at least 1 impostor!", ephemeral=True
+            )
+            return
+
+        if impostors > max_impostors:
+            await interaction.followup.send(
+                f"❌ Too many impostors! Maximum for {max_players} players is {max_impostors}.",
+                ephemeral=True,
+            )
+            return
+
+        if scientists < 0 or engineers < 0:
+            await interaction.followup.send(
+                "❌ Role counts cannot be negative!", ephemeral=True
+            )
+            return
+
+        total_special_roles = impostors + scientists + engineers
+        if total_special_roles > max_players:
+            await interaction.followup.send(
+                f"❌ Total special roles ({total_special_roles}) exceeds max players ({max_players})!",
+                ephemeral=True
+            )
+            return
+
         import string
         import random
         game_code = ''.join(random.choices(string.ascii_uppercase, k=6))
         
-        # Create game in database
         game = await self.game_manager.create_game(
-            interaction.guild.id, ch_id, game_code, max_players
+            interaction.guild.id, ch_id, game_code, max_players, impostors, scientists, engineers
         )
 
+        crewmate_count = max_players - total_special_roles
+        
         await interaction.followup.send(
             f"🚀 **Among Us Lobby Created!**\n"
             f"Game Code: `{game.game_code}`\n"
             f"Max Players: **{max_players}**\n"
+            f"🔪 Impostors: **{impostors}**\n"
+            f"🧪 Scientists: **{scientists}**\n"
+            f"🔧 Engineers: **{engineers}**\n"
+            f"👷 Crewmates: **{crewmate_count}**\n\n"
             f"Players can join with `/join {game.game_code}`\n"
             f"Start the game with `/start` when ready!"
         )
@@ -111,9 +148,8 @@ class LobbyCog(commands.Cog):
             )
             return
 
-        await interaction.response.defer(thinking=True)
+        await interaction.response.defer(ephemeral=True)
 
-        # Find game by code from database
         result = await self.game_manager.get_game_by_code(code)
         
         if result is None:
@@ -130,14 +166,132 @@ class LobbyCog(commands.Cog):
             return
 
         try:
+            import random
             avatar_url = interaction.user.display_avatar.url
             await game.add_player(uid, interaction.user.display_name, avatar_url)
 
+            player = cast(DatabasePlayer, game.players[uid])
+
+            current_impostors = sum(1 for p in game.players.values() if p.role == 'Impostor')
+            current_scientists = sum(1 for p in game.players.values() if p.role == 'Scientist')
+            current_engineers = sum(1 for p in game.players.values() if p.role == 'Engineer')
+
+            available_roles = []
+            
+            remaining_impostors = game.impostor_count - current_impostors
+            remaining_scientists = game.scientist_count - current_scientists
+            remaining_engineers = game.engineer_count - current_engineers
+            
+            for _ in range(remaining_impostors):
+                available_roles.append('Impostor')
+            for _ in range(remaining_scientists):
+                available_roles.append('Scientist')
+            for _ in range(remaining_engineers):
+                available_roles.append('Engineer')
+            
+            remaining_special_slots = remaining_impostors + remaining_scientists + remaining_engineers
+            total_assigned = len(game.players)
+            remaining_crewmate_slots = game.max_players - total_assigned - remaining_special_slots
+            
+            for _ in range(remaining_crewmate_slots):
+                available_roles.append('Crewmate')
+            
+            if not available_roles:
+                available_roles = ['Crewmate']
+            
+            assigned_role = random.choice(available_roles)
+
+            player.assign_role(assigned_role)
+            player.assign_tasks()
+
+            if assigned_role == 'Impostor':
+                if uid not in game.impostors:
+                    game.impostors.append(uid)
+
+            if hasattr(player, 'save'):
+                await player.save()
+                if hasattr(player, 'save_tasks') and player.db_id:
+                    await player.save_tasks()
+            
+            if hasattr(game, 'db') and hasattr(game.db, 'set_impostors'):
+                await game.db.set_impostors(game.channel_id, game.impostors)
+
             player_count = len(game.players)
-            await interaction.followup.send(
-                f"✅ **{interaction.user.display_name}** joined the lobby! "
-                f"({player_count}/{game.max_players} players)"
+
+            role_emoji = {
+                'Impostor': '🔪',
+                'Scientist': '🧪',
+                'Engineer': '🔧',
+                'Crewmate': '👷'
+            }.get(assigned_role, '👷')
+
+            role_color = discord.Color.red() if assigned_role == 'Impostor' else discord.Color.blue()
+
+            description_base = (
+                f"**Game Code:** `{game.game_code}`\n"
+                f"**Players:** {player_count}/{game.max_players}\n\n"
             )
+
+            if assigned_role == 'Impostor':
+                description_base += (
+                    f"🔪 **Your Mission:** Eliminate the crew without getting caught!\n"
+                    f"You have fake tasks to blend in.\n"
+                    f"Use `/kill` to eliminate crewmates.\n"
+                    f"Use `/sabotage` to create chaos.\n"
+                    f"Use `/vent` to quickly move around.\n\n"
+                    f"Wait for `/start` to begin!"
+                )
+            elif assigned_role == 'Scientist':
+                description_base += (
+                    f"🧪 **Your Mission:** Complete tasks faster than normal crewmates!\n"
+                    f"Task completion speed: **1.5x**\n\n"
+                    f"Wait for `/start` to begin!"
+                )
+            elif assigned_role == 'Engineer':
+                description_base += (
+                    f"🔧 **Your Mission:** Complete tasks and use vents to move quickly!\n"
+                    f"You can use vents like impostors.\n"
+                    f"Sabotage fix speed: **2x**\n\n"
+                    f"Wait for `/start` to begin!"
+                )
+            else:
+                description_base += (
+                    f"👷 **Your Mission:** Complete all your tasks to win!\n"
+                    f"Watch out for suspicious behavior.\n\n"
+                    f"Wait for `/start` to begin!"
+                )
+
+            private_embed = discord.Embed(
+                title=f"{role_emoji} You joined as {assigned_role}!",
+                description=description_base,
+                color=role_color
+            )
+            
+            role_card_buffer = await create_role_reveal_card(
+                player_name=player.name,
+                role=assigned_role,
+                task_count=len(player.tasks),
+                avatar_url=avatar_url
+            )
+            
+            role_card_file = discord.File(role_card_buffer, filename="role_card.png")
+            private_embed.set_image(url="attachment://role_card.png")
+
+            await interaction.followup.send(
+                embed=private_embed,
+                file=role_card_file,
+                ephemeral=True
+            )
+
+            public_embed = discord.Embed(
+                title="✅ Player Joined",
+                description=f"**{interaction.user.display_name}** joined the lobby!\n\n**Players:** {player_count}/{game.max_players}",
+                color=discord.Color.green()
+            )
+
+            game_channel = self.bot.get_channel(game_channel_id)
+            if game_channel and isinstance(game_channel, discord.TextChannel):
+                await game_channel.send(embed=public_embed)
         except ValueError as e:
             await interaction.followup.send(str(e), ephemeral=True)
 

@@ -67,6 +67,7 @@ class GameDatabase:
             
             -- TEMPORARY TABLES (Clear on startup)
             
+            DROP TABLE IF EXISTS games;
             CREATE TABLE IF NOT EXISTS games (
                 channel_id INTEGER PRIMARY KEY,
                 guild_id INTEGER NOT NULL,
@@ -74,6 +75,9 @@ class GameDatabase:
                 phase TEXT DEFAULT 'lobby',
                 max_players INTEGER DEFAULT 10,
                 min_players INTEGER DEFAULT 4,
+                impostor_count INTEGER DEFAULT 1,
+                scientist_count INTEGER DEFAULT 0,
+                engineer_count INTEGER DEFAULT 0,
                 active_sabotage TEXT,
                 kill_cooldown INTEGER DEFAULT 18,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -149,14 +153,14 @@ class GameDatabase:
         await self.connection.commit()
         print("🧹 Temporary game data cleared")
  
-    async def create_game(self, channel_id: int, guild_id: int, game_code: str, max_players: int = 10):
+    async def create_game(self, channel_id: int, guild_id: int, game_code: str, max_players: int = 10, impostor_count: int = 1, scientist_count: int = 0, engineer_count: int = 0):
         """Create a new game"""
         if self.connection is None:
             raise ValueError("Database connection not initialized. Call initialize() first.")
         await self.connection.execute("""
-            INSERT INTO games (channel_id, guild_id, game_code, max_players)
-            VALUES (?, ?, ?, ?)
-        """, (channel_id, guild_id, game_code, max_players))
+            INSERT INTO games (channel_id, guild_id, game_code, max_players, impostor_count, scientist_count, engineer_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (channel_id, guild_id, game_code, max_players, impostor_count, scientist_count, engineer_count))
         await self.connection.commit()
     
     async def get_game(self, channel_id: int) -> Optional[Dict[str, Any]]:

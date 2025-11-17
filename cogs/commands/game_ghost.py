@@ -1,8 +1,21 @@
 """Ghost chat for dead players"""
 import discord
+import asyncio
 from discord import app_commands
 from discord.ext import commands
 from typing import cast
+
+
+async def safe_dm_user(user: discord.User | discord.Member, **kwargs):
+    for attempt in range(7):
+        try:
+            await user.send(**kwargs)
+            return
+        except discord.errors.HTTPException:
+            if attempt < 6:
+                await asyncio.sleep(3)
+            else:
+                pass
 
 
 class GhostChatCog(commands.Cog):
@@ -62,7 +75,7 @@ class GhostChatCog(commands.Cog):
                         description=f"**{player.name}:** {message}",
                         color=discord.Color.purple()
                     )
-                    await user.send(embed=embed)
+                    await safe_dm_user(user, embed=embed)
                     sent_count += 1
                 except Exception:
                     pass

@@ -52,22 +52,14 @@ async def cleanup_game(game, bot=None):
 async def check_and_announce_winner(
     game, channel: discord.TextChannel, context: str = "", bot=None
 ) -> bool:
-    """
-    Check win condition and announce if there's a winner.
-    Returns True if game ended, False otherwise.
-    Prevents duplicate win announcements.
-    Also removes the game from the database and cache when the game ends.
-    """
     if game.phase == "ended":
         return True
 
     winner = game.check_win()
     if winner:
-        # Cancel all background tasks immediately
         if hasattr(game, 'cancel_all_tasks'):
             game.cancel_all_tasks()
         
-        # Clear any active sabotages
         game.active_sabotage = None
         
         game.phase = "ended"
@@ -93,8 +85,22 @@ async def check_and_announce_winner(
 
         await channel.send(message)
         
-        # Clean up game from everywhere
-        await cleanup_game(game, bot)
+        channel_id = game.channel_id
+        game_manager = None
+        
+        if bot and hasattr(bot, 'game_manager'):
+            game_manager = bot.game_manager
+        
+        if game_manager:
+            try:
+                await game_manager.delete_game(channel_id)
+                print(f'✅ Deleted game from database for channel {channel_id}')
+            except Exception as e:
+                print(f'⚠️  Error deleting game from database: {e}')
+        
+        if bot and hasattr(bot, 'amongus_games'):
+            if channel_id in bot.amongus_games:
+                del bot.amongus_games[channel_id]
         
         return True
 

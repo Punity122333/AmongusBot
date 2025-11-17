@@ -95,7 +95,7 @@ class Player:
 
 
 class AmongUsGame:
-    def __init__(self, guild_id: int, channel_id: int, max_players: int = MAX_PLAYERS):
+    def __init__(self, guild_id: int, channel_id: int, max_players: int = MAX_PLAYERS, impostors: int = 1, scientists: int = 0, engineers: int = 0):
         self.guild_id = guild_id
         self.channel_id = channel_id
         self.max_players = max_players
@@ -111,6 +111,10 @@ class AmongUsGame:
         self.last_meeting_time = 0
         self.game_start_time = 0
         self.nearby_players_last_meeting: List[str] = []
+        
+        self.impostor_count = impostors
+        self.scientist_count = scientists
+        self.engineer_count = engineers
         
         self.background_tasks: Set[asyncio.Task] = set()
         
@@ -135,11 +139,10 @@ class AmongUsGame:
             del self.players[user_id]
 
     async def add_dummies_if_needed(self):
-        
         while len(self.players) < self.max_players:
             dummy_id = -(len(self.players) + 1)
             name = f'Dummy{abs(dummy_id)}'
-            await self.add_player(dummy_id, name, "", is_bot=True)
+            dummy = await self.add_player(dummy_id, name, "", is_bot=True)
 
     async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0):
         ids = list(self.players.keys())

@@ -200,7 +200,7 @@ class MapCog(commands.Cog):
             if room_obj.has_tasks:
                 tasks_here = [(idx, t) for idx, t in enumerate(player.tasks) if t.location == current_room]
                 if tasks_here:
-                    task_list = "\n".join([f"{idx}. {t}" for idx, t in tasks_here])
+                    task_list = "\n".join([f"{idx+1}. {t}" for idx, t in tasks_here])
                     embed.add_field(
                         name="Your Tasks Here",
                         value=task_list,
@@ -247,9 +247,13 @@ class MapCog(commands.Cog):
     @app_commands.command(name='fasttravel', description='Instantly travel to any room (limited uses)')
     @app_commands.describe(room='The room to fast travel to')
     async def fasttravel(self, interaction: discord.Interaction, room: str):
+        if not interaction.channel:
+            await interaction.response.send_message("Use in a server channel.", ephemeral=True)
+            return
+            
         await interaction.response.defer(ephemeral=True)
         
-        ch_id = interaction.channel_id
+        ch_id = interaction.channel.id
         uid = interaction.user.id
         
         if ch_id not in self.games:
@@ -272,7 +276,6 @@ class MapCog(commands.Cog):
             await interaction.followup.send("❌ Ghosts cannot fast travel!", ephemeral=True)
             return
         
-        # Check if doors are sabotaged
         if hasattr(game, 'active_sabotage') and game.active_sabotage == 'doors':
             await interaction.followup.send(
                 "🚪 **DOORS LOCKED!**\n\n"
@@ -282,7 +285,6 @@ class MapCog(commands.Cog):
             )
             return
         
-        # Check fast travel uses remaining
         if player.fast_travels_remaining <= 0:
             await interaction.followup.send(
                 "❌ You have no fast travels remaining!\n"
@@ -293,7 +295,6 @@ class MapCog(commands.Cog):
         
         current_location = player.location
         
-        # Normalize room name
         room_map = {r.lower(): r for r in game.map_layout.rooms.keys()}
         room_lower = room.lower()
         
@@ -313,16 +314,13 @@ class MapCog(commands.Cog):
             await interaction.followup.send(f"❌ Room '{room}' does not exist!", ephemeral=True)
             return
         
-        # Check if already in the room
         if current_location == actual_room_name:
             await interaction.followup.send(f"❌ You are already in **{actual_room_name}**!", ephemeral=True)
             return
         
-        # Perform fast travel
         player.location = actual_room_name
         player.fast_travels_remaining -= 1
         
-        # Build response message
         embed = discord.Embed(
             title="⚡ Fast Travel Successful!",
             description=f"Traveled from **{current_location}** → **{actual_room_name}**",
@@ -335,7 +333,6 @@ class MapCog(commands.Cog):
             inline=True
         )
         
-        # Show tasks available in the new room
         if target_room_obj.has_tasks:
             tasks_here = [t for t in player.tasks if t.location == actual_room_name and not t.completed]
             if tasks_here:
@@ -348,7 +345,6 @@ class MapCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
-        # Check for bodies in the room
         if target_room_obj.bodies and not player.is_bot:
             channel = interaction.channel
             if isinstance(channel, discord.TextChannel):
