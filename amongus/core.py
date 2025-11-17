@@ -129,7 +129,6 @@ class AmongUsGame:
         if len(self.players) >= self.max_players:
             raise ValueError('Room full')
         p = Player(user_id, name, avatar_url, is_bot)
-        # Assign color
         p.color = PLAYER_COLORS[len(self.players) % len(PLAYER_COLORS)]
         self.players[user_id] = p
         return p
@@ -139,10 +138,43 @@ class AmongUsGame:
             del self.players[user_id]
 
     async def add_dummies_if_needed(self):
+        all_rooms = list(self.map_layout.rooms.keys())
+        available_rooms = all_rooms.copy()
+        
+        dummy_positions = []
+        
         while len(self.players) < self.max_players:
             dummy_id = -(len(self.players) + 1)
             name = f'Dummy{abs(dummy_id)}'
             dummy = await self.add_player(dummy_id, name, "", is_bot=True)
+            
+            if available_rooms:
+                spawn_room = random.choice(available_rooms)
+                available_rooms.remove(spawn_room)
+            else:
+                spawn_room = random.choice(all_rooms)
+            
+            dummy.location = spawn_room
+            dummy_positions.append(spawn_room)
+        
+        room_counts = {}
+        for room in dummy_positions:
+            room_counts[room] = room_counts.get(room, 0) + 1
+        
+        num_dummies = len(dummy_positions)
+        if num_dummies >= 4:
+            rooms_with_2plus = sum(1 for count in room_counts.values() if count >= 2)
+            
+            if rooms_with_2plus < 2:
+                dummy_list = [p for p in self.players.values() if p.is_bot]
+                
+                if len(dummy_list) >= 4:
+                    target_rooms = random.sample(all_rooms, 2)
+                    
+                    for i, target_room in enumerate(target_rooms):
+                        if i * 2 + 1 < len(dummy_list):
+                            dummy_list[i * 2].location = target_room
+                            dummy_list[i * 2 + 1].location = target_room
 
     async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0):
         ids = list(self.players.keys())

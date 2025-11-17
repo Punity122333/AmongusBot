@@ -218,11 +218,17 @@ async def bot_impostor_behavior(
                             except Exception as e:
                                 print(f"Error DMing victim: {e}")
                         
-                        if random.random() < 0.35:
+                        
+                        report_chance = random.random()
+                        
+                        if report_chance < 0.25:
+                            
+                            from .game_bodies import schedule_impostor_self_report
+                            asyncio.create_task(schedule_impostor_self_report(bot, game, channel, victim, player, player.location))
+                        elif report_chance < 0.50:
+                            
                             from .game_bodies import teleport_and_report_body
                             asyncio.create_task(teleport_and_report_body(bot, game, channel, victim, player.location))
-                        else:
-                            await notify_body_discovery(bot, game, channel, victim, player.location)
                         
                         if await check_and_announce_winner(game, channel, "kill", bot):
                             return

@@ -19,6 +19,95 @@ async def safe_dm_user(user: discord.User | discord.Member, **kwargs):
                 pass
 
 
+class WitnessView(ui.View):
+    def __init__(self, bot: discord.Client, game, channel: discord.TextChannel, victim, killer_name: str, location: str):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.game = game
+        self.channel = channel
+        self.victim = victim
+        self.killer_name = killer_name
+        self.location = location
+        self.responded = False
+        
+    @ui.button(label="📢 Call Meeting", style=discord.ButtonStyle.danger)
+    async def call_meeting(self, interaction: discord.Interaction, button: ui.Button):
+        if self.responded:
+            await interaction.response.send_message("You already responded!", ephemeral=True)
+            return
+        
+        if self.game.phase == "meeting":
+            await interaction.response.send_message("❌ A meeting has already been called!", ephemeral=True)
+            return
+        
+        room = self.game.get_room(self.location)
+        if not room or self.victim.name not in room.bodies:
+            await interaction.response.send_message("❌ The body has already been reported!", ephemeral=True)
+            return
+            
+        self.responded = True
+
+        for item in self.children:
+            if isinstance(item, ui.Button):
+                item.disabled = True
+        
+        embed = discord.Embed(
+            title="📢 Meeting Called!",
+            description=f"You reported witnessing **{self.killer_name}** kill **{self.victim.name}** in **{self.location}** and called an emergency meeting!",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="The crew will now discuss who the impostor is.")
+        
+        try:
+            await interaction.response.edit_message(
+                embed=embed,
+                view=self
+            )
+        except discord.errors.NotFound:
+            await interaction.response.send_message("❌ Meeting already called by someone else!", ephemeral=True)
+            return
+        
+        room.remove_body(self.victim.name)
+        
+        player = self.game.players.get(interaction.user.id)
+        player_name = player.name if player else "Unknown"
+        
+        await self.channel.send(
+            f"🚨 **{player_name}** witnessed **{self.killer_name}** kill **{self.victim.name}** in **{self.location}** and called a meeting!"
+        )
+        
+        from .game_meeting import trigger_meeting
+        await trigger_meeting(self.game, self.channel, f"{player_name} (witnessed murder)", self.bot)
+        
+        self.stop()
+    
+    @ui.button(label="🤫 Ignore", style=discord.ButtonStyle.secondary)
+    async def ignore_murder(self, interaction: discord.Interaction, button: ui.Button):
+        if self.responded:
+            await interaction.response.send_message("You already responded!", ephemeral=True)
+            return
+            
+        self.responded = True
+
+        for item in self.children:
+            if isinstance(item, ui.Button):
+                item.disabled = True
+        
+        embed = discord.Embed(
+            title="🤫 Ignored",
+            description=f"You decided to stay silent about witnessing **{self.killer_name}** kill **{self.victim.name}**...\n\nThe impostor might come after you next.",
+            color=discord.Color.dark_grey()
+        )
+        embed.set_footer(text="No one else will know what you saw.")
+        
+        await interaction.response.edit_message(
+            embed=embed,
+            view=self
+        )
+        
+        self.stop()
+
+
 class KillView(ui.View):
     def __init__(self, game, killer, bot, from_vent=False):
         super().__init__(timeout=30)
@@ -79,16 +168,28 @@ class KillView(ui.View):
                             if witness_user:
                                 embed = discord.Embed(
                                     title="👁️ YOU WITNESSED A MURDER!",
-                                    description=f"**YOU SAW {self.killer.name.upper()} KILL {target.name.upper()} IN {self.killer.location.upper()}!**\n\nYou can report this immediately!",
+                                    description=f"**YOU SAW {self.killer.name.upper()} KILL {target.name.upper()} IN {self.killer.location.upper()}!**\n\n**Choose your action:**",
                                     color=discord.Color.red()
+                                )
+                                embed.add_field(
+                                    name="📢 Call Meeting",
+                                    value="Report what you saw and gather everyone to discuss",
+                                    inline=False
+                                )
+                                embed.add_field(
+                                    name="🤫 Ignore",
+                                    value="Stay silent and pretend you didn't see anything",
+                                    inline=False
                                 )
                                 embed.add_field(
                                     name="🔍 What You Saw",
                                     value=f"**Killer:** {self.killer.name}\n**Victim:** {target.name}\n**Location:** {self.killer.location}",
                                     inline=False
                                 )
-                                embed.set_footer(text="Use /reportbody to call a meeting!")
-                                await safe_dm_user(witness_user, embed=embed)
+                                embed.set_footer(text="⏰ You have 60 seconds to decide")
+                                
+                                view = WitnessView(self.bot, self.game, interaction.channel, target, self.killer.name, self.killer.location)
+                                await safe_dm_user(witness_user, embed=embed, view=view)
                         except Exception as e:
                             print(f"Error DMing witness: {e}")
 

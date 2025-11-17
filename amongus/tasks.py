@@ -658,6 +658,160 @@ class UploadDataTaskView(ui.View):
             await self.on_complete()
 
 
+class MonitorTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="📹 Check Cameras", style=discord.ButtonStyle.primary, emoji="📹")
+    async def check_cameras(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="📹 Monitoring security cameras...",
+            view=self,
+        )
+        await asyncio.sleep(3)
+        await interaction.edit_original_response(
+            content="📹 Security check complete!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
+class ScanTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="🔬 Start Diagnostics", style=discord.ButtonStyle.primary, emoji="🔬")
+    async def start_scan(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="🔬 Running diagnostics...",
+            view=self,
+        )
+        await asyncio.sleep(4)
+        await interaction.edit_original_response(
+            content="🔬 Diagnostics complete!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
+class OrganizeTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="📦 Organize Items", style=discord.ButtonStyle.primary, emoji="📦")
+    async def organize(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="📦 Organizing storage...",
+            view=self,
+        )
+        await asyncio.sleep(3)
+        await interaction.edit_original_response(
+            content="📦 Storage organized!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
+class AdjustTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="⚙️ Adjust Settings", style=discord.ButtonStyle.primary, emoji="⚙️")
+    async def adjust(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="⚙️ Adjusting shields...",
+            view=self,
+        )
+        await asyncio.sleep(3)
+        await interaction.edit_original_response(
+            content="⚙️ Shields adjusted!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
+class RepairTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="🔧 Repair System", style=discord.ButtonStyle.primary, emoji="🔧")
+    async def repair(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="🔧 Repairing communications...",
+            view=self,
+        )
+        await asyncio.sleep(4)
+        await interaction.edit_original_response(
+            content="🔧 Communications repaired!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
+class CalibrateNavTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="🧭 Calibrate", style=discord.ButtonStyle.primary, emoji="🧭")
+    async def calibrate_nav(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="🧭 Calibrating navigation...",
+            view=self,
+        )
+        await asyncio.sleep(3)
+        await interaction.edit_original_response(
+            content="🧭 Navigation calibrated!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
+class CheckOxygenTaskView(ui.View):
+
+    def __init__(self, on_complete: Callable):
+        super().__init__(timeout=TASK_COMPLETION_TIME)
+        self.on_complete = on_complete
+
+    @ui.button(label="💨 Check Levels", style=discord.ButtonStyle.primary, emoji="💨")
+    async def check_oxygen(self, interaction: discord.Interaction, button: ui.Button):
+        button.disabled = True
+        await interaction.response.edit_message(
+            content="💨 Checking oxygen levels...",
+            view=self,
+        )
+        await asyncio.sleep(2)
+        await interaction.edit_original_response(
+            content="💨 Oxygen levels normal!",
+            view=None,
+        )
+        self.stop()
+        await self.on_complete()
+
+
 def generate_tasks_for_player(count: Optional[int] = None) -> list[Task]:
 
     if count is None:
@@ -696,6 +850,13 @@ def get_task_view(task: Task, on_complete: Callable) -> Optional[ui.View]:
         "stabilize": StabilizeSteeringTaskView,
         "storage": SwipeCardTaskView,
         "upload": UploadDataTaskView,
+        "monitor": MonitorTaskView,
+        "scan": ScanTaskView,
+        "organize": OrganizeTaskView,
+        "adjust": AdjustTaskView,
+        "repair": RepairTaskView,
+        "calibrate_nav": CalibrateNavTaskView,
+        "check_oxygen": CheckOxygenTaskView,
     }
 
     view_class = views.get(task.task_type)

@@ -29,14 +29,14 @@ async def teleport_and_report_body(
     victim,
     body_location: str
 ):
-    await asyncio.sleep(random.uniform(3, 8))
+    await asyncio.sleep(random.uniform(5, 10))
     
     if game.phase != 'tasks':
         return
     
     alive_non_impostors = [
         p for p in game.alive_players()
-        if p.role != "Impostor" and p.user_id != victim.user_id
+        if p.role != "Impostor" and p.user_id != victim.user_id and p.is_bot
     ]
     
     if not alive_non_impostors:
@@ -48,9 +48,15 @@ async def teleport_and_report_body(
     reporter.location = body_location
     
     try:
+        room = game.get_room(body_location)
+        if not room or victim.name not in room.bodies:
+            return
+        
         nearby_players = _get_nearby_players(game, victim, reporter)
         
         game.nearby_players_last_meeting = nearby_players
+        
+        room.remove_body(victim.name)
         
         await channel.send(
             f"🚨 **{reporter.name}** rushed to **{body_location}** and discovered **{victim.name}'s** body, calling an emergency meeting!"
@@ -79,7 +85,7 @@ async def schedule_teleport_and_report(
     body_location: str,
     impostor_view
 ):
-    await asyncio.sleep(random.uniform(8, 15))
+    await asyncio.sleep(random.uniform(5, 10))
     
     if impostor_view.responded:
         return
@@ -89,7 +95,7 @@ async def schedule_teleport_and_report(
     
     alive_non_impostors = [
         p for p in game.alive_players()
-        if p.role != "Impostor" and p.user_id != victim.user_id
+        if p.role != "Impostor" and p.user_id != victim.user_id and p.is_bot
     ]
     
     if not alive_non_impostors:
@@ -101,9 +107,15 @@ async def schedule_teleport_and_report(
     reporter.location = body_location
     
     try:
+        room = game.get_room(body_location)
+        if not room or victim.name not in room.bodies:
+            return
+        
         nearby_players = _get_nearby_players(game, victim, reporter)
         
         game.nearby_players_last_meeting = nearby_players
+        
+        room.remove_body(victim.name)
         
         await channel.send(
             f"🚨 **{reporter.name}** rushed to **{body_location}** and discovered **{victim.name}'s** body, calling an emergency meeting!"
@@ -122,6 +134,52 @@ async def schedule_teleport_and_report(
         await trigger_meeting(game, channel, f"{reporter.name} (found body)", bot)
     except Exception as e:
         print(f"Error in schedule_teleport_and_report: {e}")
+
+
+async def schedule_impostor_self_report(
+    bot: discord.Client,
+    game,
+    channel: discord.TextChannel,
+    victim,
+    impostor,
+    body_location: str
+):
+    """Impostor self-reports the body they just killed"""
+    await asyncio.sleep(random.uniform(5, 10))
+    
+    if game.phase != 'tasks':
+        return
+    
+    try:
+        room = game.get_room(body_location)
+        if not room or victim.name not in room.bodies:
+            return
+        
+        nearby_players = _get_nearby_players(game, victim, impostor)
+        
+        game.nearby_players_last_meeting = nearby_players
+        
+        room.remove_body(victim.name)
+        
+        await channel.send(
+            f"🚨 **{impostor.name}** discovered **{victim.name}'s** body and called an emergency meeting!"
+        )
+        
+        # Impostor acts suspicious by claiming the area was empty
+        suspicious_phrases = [
+            "I just found this body here!",
+            "The area seemed empty when I found the body.",
+            "I was passing by and saw the body.",
+            "I found them like this!"
+        ]
+        
+        await channel.send(
+            f"🗣️ **{impostor.name}** says: \"{random.choice(suspicious_phrases)}\""
+        )
+        
+        await trigger_meeting(game, channel, f"{impostor.name} (found body)", bot)
+    except Exception as e:
+        print(f"Error in schedule_impostor_self_report: {e}")
 
 
 class BodyDiscoveryView(ui.View):
@@ -145,6 +203,11 @@ class BodyDiscoveryView(ui.View):
         
         if self.game.phase == "meeting":
             await interaction.response.send_message("❌ A meeting has already been called!", ephemeral=True)
+            return
+        
+        room = self.game.get_room(self.location)
+        if not room or self.victim.name not in room.bodies:
+            await interaction.response.send_message("❌ The body has already been reported!", ephemeral=True)
             return
             
         self.responded = True
@@ -172,6 +235,8 @@ class BodyDiscoveryView(ui.View):
         nearby_players = _get_nearby_players(self.game, self.victim, self.game.players.get(interaction.user.id))
         
         self.game.nearby_players_last_meeting = nearby_players
+        
+        room.remove_body(self.victim.name)
         
         await self.channel.send(
             f"👁️ **{self.discoverer_name}** discovered **{self.victim.name}'s** body and called a meeting!"
@@ -319,22 +384,32 @@ async def notify_body_discovery(
                 print(f"Error sending body discovery DM to player: {e}")
         return
 
-    if random.random() < 0.6: 
-        
+    # For bot kills or when no specific discoverer, decide what happens
+    # 35% chance: bot crewmate reports, 35% chance: left for discovery, 30% chance: do nothing
+    report_chance = random.random()
+    
+    if report_chance < 0.35: 
+        # Bot crewmate reports the body
         alive_bots = [p for p in game.alive_players() if p.user_id != victim.user_id and p.is_bot]
         
         if alive_bots:
             discoverer = random.choice(alive_bots)
             
-            await asyncio.sleep(5)
+            await asyncio.sleep(random.uniform(5, 10))
             
             if game.phase != 'tasks':
                 return
             
             try:
+                room = game.get_room(room_name)
+                if not room or victim.name not in room.bodies:
+                    return
+                
                 nearby_players = _get_nearby_players(game, victim, discoverer)
                 
                 game.nearby_players_last_meeting = nearby_players
+                
+                room.remove_body(victim.name)
                 
                 await channel.send(
                     f"👁️ **{discoverer.name}** discovered **{victim.name}'s** body and called a meeting!"
@@ -354,35 +429,29 @@ async def notify_body_discovery(
                 await trigger_meeting(game, channel, f"{discoverer.name} (found body)", bot)
             except Exception as e:
                 print(f"Error in bot body discovery: {e}")
+    # else: 65% chance - Leave the body for players to discover (do nothing)
 
 
 def _get_nearby_players(game, victim, discoverer) -> list[str]:
-    """Get list of players that were 'nearby' the body when discovered"""
-    alive_players = game.alive_players()
+    body_location = victim.location if victim else discoverer.location
+    body_room = game.get_room(body_location)
     
-    # Get impostors
-    impostors = [p for p in game.players.values() if p.role == "Impostor" and p.alive]
-    
-    # Build nearby players list (2-4 players)
-    num_nearby = min(random.randint(2, 4), len(alive_players))
-    if num_nearby == 0:
+    if not body_room:
         return []
     
-    potential_nearby = random.sample(alive_players, num_nearby)
+    nearby_rooms = [body_location]
+    if body_room.connected_rooms:
+        nearby_rooms.extend(body_room.connected_rooms)
     
-    impostor_included = False
-    for impostor in impostors:
-        if random.random() < 0.70:  # 70% chance to include impostor
-            if impostor not in potential_nearby:
-                # Replace a random player with the impostor
-                if potential_nearby:
-                    potential_nearby[random.randint(0, len(potential_nearby) - 1)] = impostor
-            impostor_included = True
-            break
+    alive_players = game.alive_players()
+    players_in_nearby_rooms = [
+        p for p in alive_players 
+        if p.location in nearby_rooms 
+        and p.user_id != (victim.user_id if victim else None)
+        and p.user_id != discoverer.user_id
+    ]
     
-    nearby_players = [p.name for p in potential_nearby 
-                     if p.user_id != victim.user_id and p.user_id != discoverer.user_id]
-    
+    nearby_players = [p.name for p in players_in_nearby_rooms]
     random.shuffle(nearby_players)
     
     return nearby_players
@@ -448,7 +517,10 @@ class BodyReportCog(commands.Cog):
             
             body_names = ", ".join(current_room_obj.bodies)
             
-           
+            nearby_players = _get_nearby_players(game, None, player)
+            game.nearby_players_last_meeting = nearby_players
+            
+            current_room_obj.clear_bodies()
             
             card_buffer = await create_emergency_meeting_card()
             file = discord.File(card_buffer, filename="meeting.png")
@@ -466,7 +538,17 @@ class BodyReportCog(commands.Cog):
             )
             
             await interaction.channel.send(embed=embed, file=file)
+            
+            if nearby_players:
+                players_list = ", ".join([f"**{p}**" for p in nearby_players])
+                await interaction.channel.send(
+                    f"🗣️ **{player.name}** says: \"I saw {players_list} near the body!\""
+                )
+            
             await interaction.followup.send("✅ You reported the body and called a meeting!", ephemeral=True)
+            
+            from .game_meeting import trigger_meeting
+            await trigger_meeting(game, interaction.channel, f"{player.name} (found body)", self.bot)
 
 async def setup(bot: commands.Bot):
     """Classic (synchronous) setup for extension loader compatibility."""

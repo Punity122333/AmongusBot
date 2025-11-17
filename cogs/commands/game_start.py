@@ -42,6 +42,20 @@ class GameStartCog(commands.Cog):
             return
 
         await game.add_dummies_if_needed()
+        
+        import random
+        all_rooms = list(game.map_layout.rooms.keys())
+        available_rooms = all_rooms.copy()
+        
+        for player in game.players.values():
+            if not player.is_bot:
+                if available_rooms:
+                    spawn_room = random.choice(available_rooms)
+                    available_rooms.remove(spawn_room)
+                else:
+                    spawn_room = random.choice(all_rooms)
+                
+                player.location = spawn_room
 
         game.phase = "tasks"
         

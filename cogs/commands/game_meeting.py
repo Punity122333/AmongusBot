@@ -216,7 +216,17 @@ async def _bot_voting_behavior(game: AmongUsGame, channel: discord.TextChannel):
         if bot.role == "Impostor":
             crewmates = [p for p in alive_players if p.role != "Impostor" and p.user_id != bot.user_id]
             
-            if random.random() < 0.4:
+            nearby_names = game.nearby_players_last_meeting if hasattr(game, 'nearby_players_last_meeting') else []
+            nearby_crewmates = [p for p in crewmates if p.name in nearby_names]
+            
+            if nearby_crewmates and random.random() < 0.65:
+                target = random.choice(nearby_crewmates)
+                await game.cast_vote(bot.user_id, target.user_id)
+                try:
+                    await channel.send(f"🗳️ **{bot.name}** voted for **{target.name}**.")
+                except:
+                    pass
+            elif random.random() < 0.4:
                 await game.cast_vote(bot.user_id, -1)
                 try:
                     await channel.send(f"🤷 **{bot.name}** voted to skip.")
@@ -236,17 +246,18 @@ async def _bot_voting_behavior(game: AmongUsGame, channel: discord.TextChannel):
             nearby_targets = [p for p in other_players if p.name in nearby_names]
             far_targets = [p for p in other_players if p.name not in nearby_names]
             
-            if random.random() < 0.4:
-                await game.cast_vote(bot.user_id, -1)
-                try:
-                    await channel.send(f"🤷 **{bot.name}** voted to skip.")
-                except:
-                    pass
-            elif nearby_targets and random.random() < 0.7:
-                target = random.choice(nearby_targets)
+            if nearby_targets and random.random() < 0.75:
+                weights = [2.7 if p in nearby_targets else 0.5 for p in other_players]
+                target = random.choices(other_players, weights=weights, k=1)[0]
                 await game.cast_vote(bot.user_id, target.user_id)
                 try:
                     await channel.send(f"🗳️ **{bot.name}** voted for **{target.name}**.")
+                except:
+                    pass
+            elif random.random() < 0.35:
+                await game.cast_vote(bot.user_id, -1)
+                try:
+                    await channel.send(f"🤷 **{bot.name}** voted to skip.")
                 except:
                     pass
             elif other_players:

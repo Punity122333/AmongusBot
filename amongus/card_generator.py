@@ -399,15 +399,11 @@ async def create_death_card(player_name: str, avatar_url: str) -> io.BytesIO:
         avatar_size = 200
         avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
         
-        # # Circular mask with dark overlay
-        # mask = Image.new('L', (avatar_size, avatar_size), 0)
-        # mask_draw = ImageDraw.Draw(mask)
-        # mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
-        # avatar.putalpha(mask)
+        mask = Image.new('L', (avatar_size, avatar_size), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+        avatar.putalpha(mask)
         
-        # # Darken the avatar
-        # overlay = Image.new('RGBA', (avatar_size, avatar_size), (0, 0, 0, 150))
-        # avatar = Image.alpha_composite(avatar, overlay)
         
         img.paste(avatar, (ROLE_CARD_WIDTH//2 - avatar_size//2, 100), avatar)
     

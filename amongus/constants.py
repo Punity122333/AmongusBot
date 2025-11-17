@@ -27,7 +27,7 @@ TASK_TYPES = {
         "name": "Fix Wiring",
         "emoji": "⚡",
         "difficulty": "easy",
-        "locations": ["Electrical", "Admin", "Nav", "Cafeteria", "Storage", "Security"],
+        "locations": ["Electrical", "Admin", "Nav", "Cafeteria", "Storage", "Security", "Hallway"],
     },
     "download": {
         "name": "Download Data",
@@ -136,6 +136,48 @@ TASK_TYPES = {
         "emoji": "📤",
         "difficulty": "easy",
         "locations": ["Admin", "Communications"],
+    },
+    "monitor": {
+        "name": "Monitor Security",
+        "emoji": "📹",
+        "difficulty": "easy",
+        "locations": ["Security", "Hallway"],
+    },
+    "scan": {
+        "name": "Run Diagnostics",
+        "emoji": "🔬",
+        "difficulty": "medium",
+        "locations": ["O2", "Nav"],
+    },
+    "organize": {
+        "name": "Organize Storage",
+        "emoji": "📦",
+        "difficulty": "easy",
+        "locations": ["Storage"],
+    },
+    "adjust": {
+        "name": "Adjust Shields",
+        "emoji": "⚙️",
+        "difficulty": "medium",
+        "locations": ["Shields"],
+    },
+    "repair": {
+        "name": "Repair Communications",
+        "emoji": "🔧",
+        "difficulty": "medium",
+        "locations": ["Communications"],
+    },
+    "calibrate_nav": {
+        "name": "Calibrate Navigation",
+        "emoji": "🧭",
+        "difficulty": "medium",
+        "locations": ["Nav"],
+    },
+    "check_oxygen": {
+        "name": "Check Oxygen Levels",
+        "emoji": "💨",
+        "difficulty": "easy",
+        "locations": ["O2"],
     },
 }
 
