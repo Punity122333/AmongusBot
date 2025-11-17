@@ -46,15 +46,14 @@ The bot will register application (slash) commands with Discord and connect to t
 
 The bot exposes several application commands (slash commands). Examples include:
 
-- `/start` or `/startgame` to initialize a game (check the actual command names implemented in the cogs)
+- `/start` to initialize a game (check the actual command names implemented in the cogs)
 - `/join` and `/leave` to manage player participation
 - `/kill` and `/killcooldown` for impostor kill actions
 - `/map` to render the current map
-- `/reportbody` to call meetings when a body is found
 - `/fixsabotage` to resolve active sabotages
 - `/vent` to use vents as an impostor
 - `/status` to check game status
-- `/end` to force-end a game
+- `/endgame` to force-end a game
 
 Command names and options are defined inside the `cogs/commands` folder.
 
