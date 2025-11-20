@@ -20,7 +20,7 @@ class Player:
         self.voted_for: Optional[int] = None
         self.kill_cooldown = 0
         self.sabotage_cooldown = 0
-        self.emergency_meetings_left = 1
+        self.emergency_meetings_left = 2
         self.in_vent = False
         
         # Fast travel counter
@@ -111,7 +111,7 @@ class AmongUsGame:
         self.last_meeting_time = 0
         self.game_start_time = 0
         self.nearby_players_last_meeting: List[str] = []
-        
+        self.meeting_caller_name: Optional[str] = None
         self.impostor_count = impostors
         self.scientist_count = scientists
         self.engineer_count = engineers

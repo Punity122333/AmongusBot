@@ -140,14 +140,27 @@ class DatabaseGame(AmongUsGame):
             current_engineers = sum(1 for p in self.players.values() if p.role == 'Engineer')
 
             available_roles = []
-            if current_impostors < self.impostor_count:
+            
+            remaining_impostors = self.impostor_count - current_impostors
+            remaining_scientists = self.scientist_count - current_scientists
+            remaining_engineers = self.engineer_count - current_engineers
+            
+            for _ in range(remaining_impostors):
                 available_roles.append('Impostor')
-            if current_scientists < self.scientist_count:
+            for _ in range(remaining_scientists):
                 available_roles.append('Scientist')
-            if current_engineers < self.engineer_count:
+            for _ in range(remaining_engineers):
                 available_roles.append('Engineer')
-            if not available_roles:
+            
+            remaining_special_slots = remaining_impostors + remaining_scientists + remaining_engineers
+            total_assigned = len(self.players)
+            remaining_crewmate_slots = self.max_players - total_assigned - remaining_special_slots
+            
+            for _ in range(remaining_crewmate_slots):
                 available_roles.append('Crewmate')
+            
+            if not available_roles:
+                available_roles = ['Crewmate']
 
             assigned_role = random.choice(available_roles)
             dummy.assign_role(assigned_role)
@@ -164,7 +177,7 @@ class DatabaseGame(AmongUsGame):
         
         await self.db.set_impostors(self.channel_id, self.impostors)
     
-    async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0):  # type: ignore[override]
+    async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0): 
         """Assign roles and save to database"""
         ids = list(self.players.keys())
         random.shuffle(ids)

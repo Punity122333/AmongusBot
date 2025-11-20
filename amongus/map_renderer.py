@@ -61,16 +61,16 @@ class MapLayout:
 
     def _initialize_skeld_map(self):
         room_definitions = [
-            ("Cafeteria", 360, 45, 135, 98, ["Weapons", "Upper Engine", "Admin", "MedBay"], True, ["Download Data", "Empty Garbage"], False),
-            ("MedBay", 210, 45, 105, 83, ["Upper Engine", "Cafeteria"], True, ["Submit Scan", "Inspect Sample"], False),
+            ("Cafeteria", 360, 45, 135, 98, ["Weapons", "Upper Engine", "Admin", "MedBay"], True, ["Download Data", "Empty Garbage"], True),
+            ("MedBay", 210, 45, 105, 83, ["Upper Engine", "Cafeteria"], True, ["Submit Scan", "Inspect Sample"], True),
             ("Weapons", 675, 45, 113, 83, ["Cafeteria", "O2", "Nav"], True, ["Download Data", "Clear Asteroids"], False),
             ("Upper Engine", 45, 45, 120, 98, ["Reactor", "Security", "Cafeteria", "MedBay"], True, ["Align Engine Output", "Fuel Engines"], True),
             ("Reactor", 45, 180, 113, 90, ["Security", "Upper Engine", "Electrical"], True, ["Start Reactor", "Unlock Manifolds"], True),
-            ("Security", 195, 180, 105, 83, ["Electrical", "Reactor", "Upper Engine", "Lower Engine"], True, ["Fix Wiring"], False),
+            ("Security", 195, 180, 105, 83, ["Electrical", "Reactor", "Upper Engine", "Lower Engine"], True, ["Fix Wiring"], True),
             ("Admin", 360, 180, 105, 83, ["Cafeteria", "Storage", "Hallway"], True, ["Swipe Card", "Upload Data"], True),
             ("Hallway", 495, 203, 130, 80, ["Admin"], False, [], False),
             ("O2", 675, 165, 90, 83, ["Weapons", "Nav", "Shields"], True, ["Monitor Tree", "Clean O2 Filter"], True),
-            ("Nav", 795, 165, 90, 83, ["Weapons", "O2", "Shields"], True, ["Chart Course", "Download Data"], False),
+            ("Nav", 795, 165, 90, 83, ["Weapons", "O2", "Shields"], True, ["Chart Course", "Download Data"], True),
             ("Electrical", 45, 315, 128, 90, ["Storage", "Lower Engine", "Security","Reactor"], True, ["Fix Wiring", "Download Data", "Divert Power"], True),
             ("Storage", 360, 315, 128, 98, ["Cafeteria", "Shields", "Communications", "Admin", "Electrical"], True, ["Fuel Engines", "Empty Garbage"], True),
             ("Shields", 675, 315, 105, 83, ["Nav", "O2", "Storage", "Communications"], True, ["Prime Shields"], True),
@@ -284,6 +284,145 @@ class MapRenderer:
         return buffer
 
 
+class VentMapRenderer:
+    """Renderer for vent system map"""
+    def __init__(self, map_layout: MapLayout, width: int = 923, height: int = 600):
+        self.map_layout = map_layout
+        self.width = width
+        self.height = height
+        self.bg_color = (15, 15, 35)
+        self.vent_color = (60, 60, 80)
+        self.vent_highlight_color = (255, 50, 50)
+        self.vent_border = (100, 100, 120)
+        self.connection_color = (80, 255, 80)
+        
+        # Vent connections network (rooms that can be connected via vents)
+        self.vent_connections = {
+            "Cafeteria": ["Admin", "MedBay"],
+            "Upper Engine": ["Reactor", "Security"],
+            "Reactor": ["Upper Engine", "Security", "Electrical"],
+            "Security": ["Upper Engine", "Reactor", "Electrical", "Lower Engine", "Storage"],
+            "Lower Engine": ["Security", "Electrical"],
+            "Electrical": ["Security", "MedBay", "Reactor", "Lower Engine"],
+            "MedBay": ["Electrical", "Cafeteria"],
+            "Admin": ["Cafeteria", "O2"],
+            "O2": ["Admin", "Nav", "Shields"],
+            "Nav": ["O2", "Shields"],
+            "Shields": ["O2", "Nav", "Communications"],
+            "Storage": ["Admin", "Communications", "Security"],
+            "Communications": ["Shields", "Storage"],
+        }
+
+    def _draw_stars(self, draw: ImageDraw.ImageDraw):
+        """Draw background stars"""
+        random.seed(42)
+        for _ in range(100):
+            x = random.randint(0, self.width)
+            y = random.randint(0, self.height)
+            size = random.randint(1, 2)
+            draw.ellipse([x, y, x + size, y + size], fill=(200, 200, 220))
+
+    def _draw_vent_connections(self, draw: ImageDraw.ImageDraw):
+        """Draw vent tunnel connections"""
+        drawn = set()
+        for room_name, connections in self.vent_connections.items():
+            room = self.map_layout.get_room(room_name)
+            if not room or not room.can_vent:
+                continue
+                
+            for connected_room_name in connections:
+                connected = self.map_layout.get_room(connected_room_name)
+                if not connected or not connected.can_vent:
+                    continue
+                
+                # Avoid drawing the same line twice
+                key = tuple(sorted([room_name, connected_room_name]))
+                if key in drawn:
+                    continue
+                drawn.add(key)
+                
+                x1 = room.x + room.width // 2
+                y1 = room.y + room.height // 2
+                x2 = connected.x + connected.width // 2
+                y2 = connected.y + connected.height // 2
+                
+                # Draw dashed line for vent tunnel
+                draw.line([x1, y1, x2, y2], fill=self.connection_color, width=3)
+
+    def _draw_vent(self, draw: ImageDraw.ImageDraw, room: Room, is_player_vent: bool = False):
+        """Draw a vent entrance"""
+        if not room.can_vent:
+            return
+            
+        fill_color = self.vent_highlight_color if is_player_vent else self.vent_color
+        
+        x1, y1 = room.x, room.y
+        x2, y2 = room.x + room.width, room.y + room.height
+        
+        # Draw vent entrance as rounded rectangle
+        draw.rounded_rectangle(
+            [x1, y1, x2, y2],
+            radius=12,
+            fill=fill_color,
+            outline=self.vent_border,
+            width=4 if is_player_vent else 3
+        )
+        
+
+    def _draw_vent_label(self, draw: ImageDraw.ImageDraw, room: Room, font):
+        """Draw vent room label"""
+        if not room.can_vent:
+            return
+            
+        text = f"{room.name}" if room.name != "Communications" else "Comms"
+        text = text if room.name != "Upper Engine" and room.name != "Lower Engine" else text.replace("Engine", "\nEng")
+
+        
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        text_x = room.x + (room.width - text_width) // 2
+        text_y = room.y + (room.height - text_height) // 2
+        
+        # Draw text shadow
+        draw.text((text_x + 1, text_y + 1), text, font=font, fill=(0, 0, 0))
+        # Draw main text
+        draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255))
+
+    def render(self, player_vent: Optional[str] = None) -> BytesIO:
+        """Render the vent map"""
+        img = Image.new('RGB', (self.width, self.height), self.bg_color)
+        draw = ImageDraw.Draw(img)
+        
+        self._draw_stars(draw)
+        self._draw_vent_connections(draw)
+        
+        try:
+            font = ImageFont.truetype("fonts/DejaVuSans-Bold.ttf", 18)
+        except:
+            try:
+                font = ImageFont.truetype("fonts/Helvetica-Bold.ttf", 18)
+            except:
+                font = ImageFont.load_default()
+        
+        # Draw all vents
+        for room in self.map_layout.rooms.values():
+            if room.can_vent:
+                is_player = room.name == player_vent
+                self._draw_vent(draw, room, is_player)
+        
+        # Draw vent labels
+        for room in self.map_layout.rooms.values():
+            if room.can_vent:
+                self._draw_vent_label(draw, room, font)
+        
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        return buffer
+
+
 def create_map_image(
     player_room: Optional[str] = None,
     sabotaged_rooms: Optional[List[str]] = None,
@@ -294,5 +433,16 @@ def create_map_image(
     
     renderer = MapRenderer(map_layout)
     return renderer.render(player_room, sabotaged_rooms)
+
+
+def create_vent_map_image(
+    player_vent: Optional[str] = None,
+    map_layout: Optional[MapLayout] = None,
+) -> BytesIO:
+    """Create a vent-only map showing vent connections"""
+    if map_layout is None:
+        map_layout = MapLayout()
+    renderer = VentMapRenderer(map_layout)
+    return renderer.render(player_vent)
 
 

@@ -59,7 +59,7 @@ async def teleport_and_report_body(
         room.remove_body(victim.name)
         
         await channel.send(
-            f"🚨 **{reporter.name}** rushed to **{body_location}** and discovered **{victim.name}'s** body, calling an emergency meeting!"
+            f"🚨 **{reporter.name}** discovered **{victim.name}'s** body and called an emergency meeting!"
         )
         
         if nearby_players:
@@ -118,7 +118,7 @@ async def schedule_teleport_and_report(
         room.remove_body(victim.name)
         
         await channel.send(
-            f"🚨 **{reporter.name}** rushed to **{body_location}** and discovered **{victim.name}'s** body, calling an emergency meeting!"
+            f"🚨 **{reporter.name}** discovered **{victim.name}'s** body and called an emergency meeting!"
         )
         
         if nearby_players:
@@ -165,17 +165,28 @@ async def schedule_impostor_self_report(
             f"🚨 **{impostor.name}** discovered **{victim.name}'s** body and called an emergency meeting!"
         )
         
-        # Impostor acts suspicious by claiming the area was empty
-        suspicious_phrases = [
-            "I just found this body here!",
-            "The area seemed empty when I found the body.",
-            "I was passing by and saw the body.",
-            "I found them like this!"
+        # Impostor accuses 2 random crewmates to blend in (same as crewmate behavior)
+        alive_crewmates = [
+            p for p in game.alive_players()
+            if p.role != "Impostor" 
+            and p.user_id != victim.user_id 
+            and p.user_id != impostor.user_id
         ]
         
-        await channel.send(
-            f"🗣️ **{impostor.name}** says: \"{random.choice(suspicious_phrases)}\""
-        )
+        # Pick 2 random crewmates to accuse (or fewer if not enough players)
+        num_to_accuse = min(random.randint(2,3), len(alive_crewmates))
+        if num_to_accuse > 0:
+            accused_players = random.sample(alive_crewmates, num_to_accuse)
+            accused_names = [p.name for p in accused_players]
+            players_list = ", ".join([f"**{name}**" for name in accused_names])
+            
+            await channel.send(
+                f"🗣️ **{impostor.name}** says: \"I saw {players_list} near the body!\""
+            )
+        else:
+            await channel.send(
+                f"🗣️ **{impostor.name}** says: \"The area seemed empty when I found the body.\""
+            )
         
         await trigger_meeting(game, channel, f"{impostor.name} (found body)", bot)
     except Exception as e:
@@ -385,10 +396,10 @@ async def notify_body_discovery(
         return
 
     # For bot kills or when no specific discoverer, decide what happens
-    # 35% chance: bot crewmate reports, 35% chance: left for discovery, 30% chance: do nothing
+    # 50% chance: bot crewmate reports, 50% chance: left for discovery
     report_chance = random.random()
     
-    if report_chance < 0.35: 
+    if report_chance < 0.50: 
         # Bot crewmate reports the body
         alive_bots = [p for p in game.alive_players() if p.user_id != victim.user_id and p.is_bot]
         
@@ -429,7 +440,7 @@ async def notify_body_discovery(
                 await trigger_meeting(game, channel, f"{discoverer.name} (found body)", bot)
             except Exception as e:
                 print(f"Error in bot body discovery: {e}")
-    # else: 65% chance - Leave the body for players to discover (do nothing)
+    # else: 50% chance - Leave the body for players to discover (do nothing)
 
 
 def _get_nearby_players(game, victim, discoverer) -> list[str]:
@@ -439,9 +450,26 @@ def _get_nearby_players(game, victim, discoverer) -> list[str]:
     if not body_room:
         return []
     
+    # Extend search to 2 rooms in all directions
     nearby_rooms = [body_location]
+    visited = {body_location}
+    
+    # First layer: directly connected rooms
     if body_room.connected_rooms:
-        nearby_rooms.extend(body_room.connected_rooms)
+        for room in body_room.connected_rooms:
+            if room not in visited:
+                nearby_rooms.append(room)
+                visited.add(room)
+    
+    # Second layer: rooms connected to first layer rooms
+    first_layer_rooms = nearby_rooms[1:].copy()  # Skip the body location itself
+    for room_name in first_layer_rooms:
+        room_obj = game.get_room(room_name)
+        if room_obj and room_obj.connected_rooms:
+            for connected_room in room_obj.connected_rooms:
+                if connected_room not in visited:
+                    nearby_rooms.append(connected_room)
+                    visited.add(connected_room)
     
     alive_players = game.alive_players()
     players_in_nearby_rooms = [
@@ -453,7 +481,7 @@ def _get_nearby_players(game, victim, discoverer) -> list[str]:
     
     nearby_players = [p.name for p in players_in_nearby_rooms]
     random.shuffle(nearby_players)
-    
+    nearby_players = nearby_players[:random.randint(2, 4)]
     return nearby_players
 
 

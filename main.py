@@ -8,13 +8,12 @@ from amongus.database import GameDatabase
 from amongus.game_manager import GameManager
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-APPLICATION_ID = os.getenv('APPLICATION_ID')
+TOKEN = os.getenv('DC2')
+APPLICATION_ID = os.getenv('AP2')
 DEV_GUILD_ID = os.getenv('DEV_GUILD_ID')
 DEV_GUILD_IDS = [gid.strip() for gid in DEV_GUILD_ID.split(',')] if DEV_GUILD_ID else []
 
 intents = discord.Intents.default()
-intents.message_content = False
 intents.guilds = True
 intents.members = True 
 
@@ -32,6 +31,7 @@ COG_PATHS = [
     'cogs.commands.game_bodies',
     'cogs.commands.game_impostors',
     'cogs.commands.tasks_cmd',
+    'cogs.commands.debug',
     'cogs.events.listeners',
 ]
 

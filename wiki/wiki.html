@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Among Us Encyclopedia</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #ff4757;
+            padding: 20px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        nav {
+            background-color: #2f3542;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        nav a {
+            color: #f0f0f0;
+            margin: 5px 15px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        section {
+            padding: 20px 40px;
+            border-bottom: 1px solid #444;
+        }
+        section h2 {
+            color: #ff6b81;
+        }
+        section img {
+            max-width: 100%;
+            border: 2px solid #444;
+            margin: 10px 0;
+        }
+        .role {
+            background-color: #2f3542;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 5px solid #ff4757;
+        }
+        .task {
+            background-color: #2f3542;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-left: 5px solid #1e90ff;
+        }
+        footer {
+            background-color: #2f3542;
+            color: #aaa;
+            text-align: center;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Among Us Encyclopedia</h1>
+        <p>From Crewmates to Ultimate Chaos</p>
+    </header>
+    <nav>
+        <a href="#overview">Overview</a>
+        <a href="#maps">Maps</a>
+        <a href="#roles">Roles</a>
+        <a href="#tasks">Tasks</a>
+        <a href="#sabotage">Sabotage</a>
+        <a href="#venting">Venting System</a>
+        <a href="#meetings">Meetings & Voting</a>
+        <a href="#advanced">Advanced Mechanics</a>
+        <a href="#chaos">Ultimate Chaos Mode</a>
+        <a href="#discord">Discord Bot Mechanics</a>
+    </nav>
+
+    <section id="overview">
+        <h2>1. Overview</h2>
+        <p>
+            Among Us is a multiplayer social deduction game. Players are aboard a spaceship, 
+            space station, or outpost, completing tasks to win while some players are secretly impostors trying to sabotage and eliminate the crew.
+        </p>
+        <ul>
+            <li><strong>Players:</strong> 4–10 normally, but can be extended in custom/chaos modes.</li>
+            <li><strong>Roles:</strong> Crewmates, Impostors, optional special roles like Scientists and Engineers.</li>
+            <li><strong>Win Conditions:</strong>
+                <ul>
+                    <li>Crewmates: Complete all tasks or eject all impostors.</li>
+                    <li>Impostors: Kill enough crewmates to match impostor numbers, or fail critical sabotages.</li>
+                </ul>
+            </li>
+        </ul>
+    </section>
+
+    <section id="maps">
+        <h2>2. Map System</h2>
+        <p>
+            Maps are series of interconnected rooms and hallways with tasks and vents. Common maps include:
+        </p>
+        <ul>
+            <li><strong>The Skeld:</strong> Standard spaceship map.</li>
+            <li><strong>MIRA HQ:</strong> Smaller, tighter corridors.</li>
+            <li><strong>Polus:</strong> Outpost with open spaces.</li>
+            <li><strong>Airship:</strong> Large multi-floor map with ladders and complex layout.</li>
+        </ul>
+        <p>Key elements:</p>
+        <ul>
+            <li>Rooms: Contain tasks or vents.</li>
+            <li>Hallways: Connect rooms.</li>
+            <li>Vents: Only impostors (or Engineers) can use to move quickly.</li>
+            <li>Cameras/Security: Show activity in certain rooms.</li>
+        </ul>
+        <img src="placeholder_map.png" alt="Map Layout Example">
+    </section>
+
+    <section id="roles">
+        <h2>3. Roles & Abilities</h2>
+
+        <div class="role">
+            <h3>Crewmates</h3>
+            <ul>
+                <li>Complete tasks to win.</li>
+                <li>Report dead bodies and call emergency meetings.</li>
+                <li>Cannot use vents.</li>
+                <li>Taskbar shows progress.</li>
+            </ul>
+        </div>
+
+        <div class="role">
+            <h3>Impostors</h3>
+            <ul>
+                <li>Eliminate crewmates secretly.</li>
+                <li>Use vents, sabotage systems, and fake tasks.</li>
+                <li>Kill crewmates and avoid being seen.</li>
+            </ul>
+        </div>
+
+        <div class="role">
+            <h3>Special Roles</h3>
+            <ul>
+                <li><strong>Scientist:</strong> Can see vitals of other players.</li>
+                <li><strong>Engineer:</strong> Can vent like impostors and repair faster.</li>
+                <li><strong>Guardian Angel:</strong> Protects living players after death (Airship map).</li>
+            </ul>
+        </div>
+    </section>
+
+    <section id="tasks">
+        <h2>4. Task System</h2>
+        <p>Tasks are mini-games that crewmates complete to progress:</p>
+        <ul>
+            <li>Short Tasks: Quick, easy tasks.</li>
+            <li>Long Tasks: More challenging, take longer.</li>
+            <li>Common Tasks: Shared by all crewmates.</li>
+            <li>Visual Tasks: Provide visual animations for others to see.</li>
+        </ul>
+        <p>Examples of tasks:</p>
+        <div class="task">Calibrate Distributor</div>
+        <div class="task">Fix Wiring</div>
+        <div class="task">Upload/Download Data</div>
+        <div class="task">Empty Garbage</div>
+        <div class="task">Clear Asteroids</div>
+        <div class="task">Stabilize Steering</div>
+        <div class="task">Chart Course</div>
+    </section>
+
+    <section id="sabotage">
+        <h2>5. Sabotage System</h2>
+        <p>Impostors can sabotage crewmates to create urgent problems:</p>
+        <ul>
+            <li>Lights: Reduces visibility.</li>
+            <li>Oxygen: Crewmates must fix before timer expires.</li>
+            <li>Reactor: Critical, requires multiple crewmates to fix.</li>
+            <li>Communications: Blocks task map.</li>
+            <li>Doors: Locks rooms to trap players.</li>
+        </ul>
+    </section>
+
+    <section id="venting">
+        <h2>6. Venting System</h2>
+        <p>Exclusive to impostors (and Engineers in some mods). Vents allow instant movement across the map.</p>
+        <ul>
+            <li>Move between vent nodes.</li>
+            <li>Escape after a kill.</li>
+            <li>Risk: If seen, players will suspect you.</li>
+        </ul>
+        <img src="placeholder_vent.png" alt="Vent System Example">
+    </section>
+
+    <section id="meetings">
+        <h2>7. Meetings & Voting</h2>
+        <p>Meetings occur when bodies are reported or emergency buttons pressed:</p>
+        <ul>
+            <li>Players discuss suspicious behavior.</li>
+            <li>Vote to eject or skip.</li>
+            <li>Dead players can observe but not vote.</li>
+            <li>Strategy: Bluff, defend, and accuse to manipulate votes.</li>
+        </ul>
+    </section>
+
+    <section id="advanced">
+        <h2>8. Advanced Mechanics</h2>
+        <ul>
+            <li>Visual Tasks: Can verify real task progress of crewmates.</li>
+            <li>Security Cameras: Watch room activity.</li>
+            <li>Vitals: Scientists can monitor health/status in real time.</li>
+            <li>Taskbar Verification: Impostors fake tasks, but the bar doesn’t move if you watch.</li>
+        </ul>
+    </section>
+
+    <section id="chaos">
+        <h2>9. Ultimate Chaos Mode</h2>
+        <p>Custom mode with insane numbers of players and impostors:</p>
+        <ul>
+            <li>Players: 100+</li>
+            <li>Impostors: 8+</li>
+            <li>Rapid task completions and mass reporting.</li>
+            <li>Discord spam/rate limits occur with large lobbies.</li>
+        </ul>
+    </section>
+
+    <section id="discord">
+        <h2>10. Discord Bot Mechanics</h2>
+        <p>Custom Among Us bots can automate lobbies:</p>
+        <ul>
+            <li>Commands: <code>/create</code>, <code>/join</code>, <code>/start</code>, <code>/vote</code>, <code>/fixsabotage</code>.</li>
+            <li>Assign roles and tasks automatically.</li>
+            <li>Track events, kills, and meetings in chat.</li>
+            <li>Rate-limited if messages flood too quickly.</li>
+        </ul>
+    </section>
+
+    <footer>
+        <p>Among Us Wiki by Pxnity — Ultimate Chaos Edition</p>
+    </footer>
+</body>
+</html>

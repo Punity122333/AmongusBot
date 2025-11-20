@@ -4,6 +4,7 @@ from discord import app_commands, ui
 from discord.ext import commands
 import random
 from typing import cast
+from amongus.map_renderer import create_vent_map_image
 
 
 VENT_LOCATIONS = [
@@ -23,9 +24,14 @@ class VentView(ui.View):
         self.bot = bot
         self.player = player
         
-        # Add vent destination buttons (random 2-3 connected vents)
-        num_destinations = random.randint(2, 3)
-        destinations = random.sample([loc for loc in VENT_LOCATIONS if loc != current_location], num_destinations)
+        # Get valid vent connections from the map layout's vent network
+        # Import here to avoid circular import
+        from amongus.map_renderer import VentMapRenderer
+        temp_renderer = VentMapRenderer(game.map_layout)
+        valid_destinations = temp_renderer.vent_connections.get(current_location, [])
+        
+        # Only show destinations that actually have vents
+        destinations = [dest for dest in valid_destinations if game.get_room(dest) and game.get_room(dest).can_vent]
         
         for dest in destinations:
             button = ui.Button(label=f"➡️ {dest}", style=discord.ButtonStyle.secondary)
@@ -189,6 +195,104 @@ class VentCog(commands.Cog):
             view=view,
             ephemeral=True
         )
+    
+    @app_commands.command(name='ventmap', description='View the vent system map')
+    async def ventmap(self, interaction: discord.Interaction):
+        """Show a map of all vent locations and connections"""
+        await interaction.response.defer(ephemeral=True)
+        
+        if not interaction.channel:
+            await interaction.followup.send('Use in a server channel.', ephemeral=True)
+            return
+            
+        ch_id = interaction.channel.id
+        if ch_id not in self.games:
+            await interaction.followup.send('No active game.', ephemeral=True)
+            return
+            
+        game = self.games[ch_id]
+        uid = interaction.user.id
+        
+        if uid not in game.players:
+            await interaction.followup.send('Not in game.', ephemeral=True)
+            return
+            
+        player = game.players[uid]
+        
+        # Only show player location if they can vent (Impostors and Engineers)
+        # Crewmates can view the map but won't see their location highlighted
+        current_room = game.get_room(player.location)
+        player_vent = None
+        if player.can_vent and current_room and current_room.can_vent:
+            player_vent = player.location
+        
+        vent_map_buffer = create_vent_map_image(
+            player_vent=player_vent,
+            map_layout=game.map_layout
+        )
+        
+        # Create embed with vent information
+        embed = discord.Embed(
+            title="🕳️ Vent System Map",
+            description="All vent locations and connections on The Skeld",
+            color=discord.Color.dark_gray()
+        )
+        
+        # Only show location info for players who can vent
+        if player.can_vent:
+            if player_vent:
+                embed.add_field(
+                    name="Current Location",
+                    value=f"🔴 {player_vent} (You are here)",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="Current Location",
+                    value=f"📍 {player.location} (No vent access here)",
+                    inline=False
+                )
+        else:
+            # Crewmates don't see their location
+            embed.add_field(
+                name="ℹ️ Information",
+                value="As a crewmate, you cannot use vents, but you can study the vent network to track suspicious activity.",
+                inline=False
+            )
+        
+        # List all vent locations
+        vent_rooms = [room.name for room in game.map_layout.rooms.values() if room.can_vent]
+        embed.add_field(
+            name="Vent Locations",
+            value=", ".join(sorted(vent_rooms)),
+            inline=False
+        )
+        
+        # Role-specific tips
+        if player.can_vent:
+            embed.add_field(
+                name="💡 Tip",
+                value="Green lines show vent tunnel connections. Use `/vent` in a room with a vent to enter the vent system.",
+                inline=False
+            )
+            
+            if player.role == 'Engineer':
+                embed.add_field(
+                    name="🔧 Engineer Note",
+                    value="You can use vents just like impostors, but be careful not to look suspicious!",
+                    inline=False
+                )
+        else:
+            embed.add_field(
+                name="🔍 Detective Tip",
+                value="Watch for players appearing in rooms connected by vents - they might be using the vent system!",
+                inline=False
+            )
+        
+        file = discord.File(vent_map_buffer, filename="vent_map.png")
+        embed.set_image(url="attachment://vent_map.png")
+        
+        await interaction.followup.send(file=file, embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

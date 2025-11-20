@@ -4,7 +4,23 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import asyncio
+import random
+from amongus.core import AmongUsGame
 from typing import cast
+from .game_utils import start_game_loops
+
+
+
+async def safe_dm_user(user: discord.User | discord.Member, **kwargs):
+    for attempt in range(7):
+        try:
+            await user.send(**kwargs)
+            return
+        except discord.errors.HTTPException:
+            if attempt < 6:
+                await asyncio.sleep(3)
+            else:
+                pass
 
 
 class GameStartCog(commands.Cog):
@@ -71,6 +87,44 @@ class GameStartCog(commands.Cog):
         engineer_count = sum(1 for p in game.players.values() if p.role == 'Engineer')
         impostor_count = sum(1 for p in game.players.values() if p.role == 'Impostor')
 
+        for impostor in game.players.values():
+            if impostor.role == "Impostor" and not impostor.is_bot:
+                other_impostors = [
+                    p for p in game.players.values()
+                    if p.role == "Impostor" and p.user_id != impostor.user_id
+                ]
+
+                if other_impostors:
+                    embed = discord.Embed(
+                        title="🔪 Your Fellow Impostors",
+                        description="Work together to eliminate the crew!",
+                        color=discord.Color.red()
+                    )
+
+                    impostor_list = []
+                    for imp in other_impostors:
+                        impostor_list.append(f"**{imp.name}**")
+
+                    embed.add_field(
+                        name=f"Team Members ({len(other_impostors)})",
+                        value="\n".join(impostor_list),
+                        inline=False
+                    )
+
+                    user = interaction.guild.get_member(impostor.user_id) if interaction.guild else None
+                    if user:
+                        await safe_dm_user(user, embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="🔪 Solo Impostor",
+                        description="You are the only impostor! Good luck eliminating the crew on your own!",
+                        color=discord.Color.red()
+                    )
+
+                    user = interaction.guild.get_member(impostor.user_id) if interaction.guild else None
+                    if user:
+                        await safe_dm_user(user, embed=embed)
+
         role_summary = f"🎮 **Game Started!**\n" \
                       f"Players: {len(game.players)}\n" \
                       f"🔪 Impostors: {impostor_count}\n"
@@ -82,7 +136,6 @@ class GameStartCog(commands.Cog):
 
         await interaction.followup.send(role_summary)
 
-        from .game_loops import start_game_loops
 
         await start_game_loops(
             self.bot, game, cast(discord.TextChannel, interaction.channel)

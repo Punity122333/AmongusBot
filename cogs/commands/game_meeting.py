@@ -207,11 +207,31 @@ async def _bot_voting_behavior(game: AmongUsGame, channel: discord.TextChannel):
     alive_bots = [p for p in game.players.values() if p.is_bot and p.alive]
     alive_players = game.alive_players()
     
+    # Get the player who called the meeting (if stored)
+    meeting_caller_name = getattr(game, 'meeting_caller_name', None)
+    meeting_caller = None
+    if meeting_caller_name:
+        # Find the player object by name (handle "found body" suffix)
+        caller_base_name = meeting_caller_name.split(' (found body)')[0]
+        for p in alive_players:
+            if p.name == caller_base_name:
+                meeting_caller = p
+                break
+    
     for bot in alive_bots:
         await asyncio.sleep(random.uniform(2, 8))
         
         if game.phase != "meeting" or game.phase == "ended":
             return
+        
+        # 10% chance to vote for the person who called the meeting (adds risk to self-reporting)
+        if meeting_caller and meeting_caller.user_id != bot.user_id and random.random() < 0.18:
+            await game.cast_vote(bot.user_id, meeting_caller.user_id)
+            try:
+                await channel.send(f"🗳️ **{bot.name}** voted for **{meeting_caller.name}**.")
+            except:
+                pass
+            continue  # Skip rest of voting logic for this bot
         
         if bot.role == "Impostor":
             crewmates = [p for p in alive_players if p.role != "Impostor" and p.user_id != bot.user_id]
@@ -278,6 +298,9 @@ async def trigger_meeting(
 
     game.phase = "meeting"
     await game.clear_votes()
+    
+    # Store the caller name for bot voting behavior
+    game.meeting_caller_name = caller_name
 
     # Create meeting card
     card_buffer = await create_emergency_meeting_card(caller_name)

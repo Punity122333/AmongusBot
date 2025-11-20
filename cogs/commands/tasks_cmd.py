@@ -5,7 +5,9 @@ from discord import app_commands
 from discord.ext import commands
 from amongus.tasks import get_task_view
 from .game_utils import check_and_announce_winner
+from typing import Optional
 import asyncio
+import random
 
 
 class TasksCog(commands.Cog):
@@ -141,13 +143,22 @@ class TasksCog(commands.Cog):
                 inline=False,
             )
 
+        # Calculate crew total task progress for footer
+        crewmates = [p for p in game.players.values() if p.role in ['Crewmate', 'Scientist', 'Engineer']]
+        if crewmates:
+            total_crew_tasks = sum(p.total_tasks for p in crewmates)
+            completed_crew_tasks = sum(p.completed_tasks for p in crewmates)
+            embed.set_footer(text=f"Crew Total: {completed_crew_tasks}/{total_crew_tasks}")
+        else:
+            embed.set_footer(text="Crew Total: 0/0")
+
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="dotask", description="Complete a task interactively")
     @app_commands.describe(
-        task_number="The task number from your task list (use /tasks to view)"
+        task_number="The task number from your task list (optional - auto-selects task from current room)"
     )
-    async def do_task(self, interaction: discord.Interaction, task_number: int):
+    async def do_task(self, interaction: discord.Interaction, task_number: Optional[int] = None):
         if interaction.channel is None:
             await interaction.response.send_message(
                 "This command must be used in a server channel.", ephemeral=True
@@ -185,13 +196,58 @@ class TasksCog(commands.Cog):
             )
             return
 
-        task_index = task_number - 1
-        if task_index < 0 or task_index >= len(player.tasks):
-            await interaction.response.send_message(
-                f"Invalid task number! Use `/tasks` to see your task list.",
-                ephemeral=True,
-            )
-            return
+        # If no task number provided, auto-select a task from current room
+        if task_number is None:
+            current_location = player.location
+            available_tasks_indices = [
+                i for i, task in enumerate(player.tasks)
+                if not task.completed and task.location == current_location
+            ]
+            
+            if not available_tasks_indices:
+                # No tasks in current room
+                all_incomplete = [i for i, task in enumerate(player.tasks) if not task.completed]
+                if not all_incomplete:
+                    await interaction.response.send_message(
+                        "✅ You have completed all your tasks! Great work!",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Show available tasks in other locations
+                task_locations = {}
+                for i in all_incomplete:
+                    loc = player.tasks[i].location
+                    if loc not in task_locations:
+                        task_locations[loc] = []
+                    task_locations[loc].append(i + 1)
+                
+                location_list = "\n".join([f"**{loc}**: Tasks {', '.join(map(str, nums))}" for loc, nums in task_locations.items()])
+                
+                await interaction.response.send_message(
+                    f"❌ No tasks available in **{current_location}**!\n\n"
+                    f"📋 Tasks in other rooms:\n{location_list}\n\n"
+                    f"💡 Use `/move <room>` to travel to a task location.",
+                    ephemeral=True
+                )
+                return
+            
+            # Randomly select one of the available tasks
+            task_index = random.choice(available_tasks_indices)
+            task_number = task_index + 1
+            
+            # Add a message indicating auto-selection
+            auto_selected_msg = f""
+        else:
+            auto_selected_msg = ""
+            task_index = task_number - 1
+            
+            if task_index < 0 or task_index >= len(player.tasks):
+                await interaction.response.send_message(
+                    f"Invalid task number! Use `/tasks` to see your task list.",
+                    ephemeral=True,
+                )
+                return
 
         task = player.tasks[task_index]
 
@@ -229,11 +285,11 @@ class TasksCog(commands.Cog):
                     )
                     await check_and_announce_winner(game, interaction.channel, "tasks", self.bot)
 
-        view = get_task_view(task, on_task_complete)
+        view = get_task_view(task, on_task_complete, interaction.user.id)
 
         if view:
             await interaction.response.send_message(
-                f"{task.task_info['emoji']} **{task.task_info['name']}** at {task.location}\n"
+                f"{auto_selected_msg}{task.task_info['emoji']} **{task.task_info['name']}** at {task.location}\n"
                 f"Complete the task below:",
                 view=view,
                 ephemeral=True,
@@ -241,7 +297,7 @@ class TasksCog(commands.Cog):
         else:
             player.complete_task(task_index)
             await interaction.response.send_message(
-                f"✅ Completed: {task.name}", ephemeral=True
+                f"{auto_selected_msg}✅ Completed: {task.name}", ephemeral=True
             )
             await on_task_complete()
 

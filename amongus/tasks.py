@@ -25,11 +25,15 @@ class Task:
 
 class WiringTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.wires_connected = 0
         self.total_wires = 4
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="Red Wire", style=discord.ButtonStyle.danger, emoji="🔴")
     async def red_wire(self, interaction: discord.Interaction, button: ui.Button):
@@ -69,10 +73,14 @@ class WiringTaskView(ui.View):
 
 class DownloadTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.started = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="Start Download", style=discord.ButtonStyle.primary, emoji="📥")
     async def start_download(self, interaction: discord.Interaction, button: ui.Button):
@@ -98,14 +106,15 @@ class DownloadTaskView(ui.View):
 
 class ShieldsTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.shields_activated = 0
         self.pattern = random.sample(range(9), 4)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return True
+        return interaction.user.id == self.user_id
 
     @ui.button(label="1", style=discord.ButtonStyle.secondary, row=0)
     async def shield_1(self, interaction: discord.Interaction, button: ui.Button):
@@ -169,11 +178,15 @@ class ShieldsTaskView(ui.View):
 
 class AsteroidsTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.asteroids_destroyed = 0
         self.total_asteroids = 20
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🎯 FIRE!", style=discord.ButtonStyle.danger, emoji="💥")
     async def fire(self, interaction: discord.Interaction, button: ui.Button):
@@ -197,11 +210,15 @@ class AsteroidsTaskView(ui.View):
 class FuelTaskView(ui.View):
     """Fuel Engines - Fill fuel cans"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.fuel_level = 0
         self.max_fuel = 100
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="⛽ Fill Tank", style=discord.ButtonStyle.success, emoji="⛽")
     async def fill_fuel(self, interaction: discord.Interaction, button: ui.Button):
@@ -226,10 +243,14 @@ class FuelTaskView(ui.View):
 class TrashTaskView(ui.View):
     """Empty Garbage - Dispose trash"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.lever_pulled = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🗑️ Pull Lever", style=discord.ButtonStyle.danger, emoji="🗑️")
     async def pull_lever(self, interaction: discord.Interaction, button: ui.Button):
@@ -252,10 +273,14 @@ class TrashTaskView(ui.View):
 class MedbayScanTaskView(ui.View):
     """Submit Scan - Medical scan"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.scanning = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🏥 Start Scan", style=discord.ButtonStyle.primary, emoji="🏥")
     async def start_scan(self, interaction: discord.Interaction, button: ui.Button):
@@ -284,12 +309,16 @@ class MedbayScanTaskView(ui.View):
 class ReactorTaskView(ui.View):
     """Start Reactor - Simon says pattern"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.pattern = [random.randint(1, 5) for _ in range(5)]
         self.player_input = []
         self.current_display = 0
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="1", style=discord.ButtonStyle.primary, row=0)
     async def btn_1(self, interaction: discord.Interaction, button: ui.Button):
@@ -336,11 +365,15 @@ class ReactorTaskView(ui.View):
 class OxygenTaskView(ui.View):
     """Clean O2 Filter - Clean the filter"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.leaves_removed = 0
         self.total_leaves = 6
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="💨 Remove Leaves", style=discord.ButtonStyle.success, emoji="🍃")
     async def remove_leaves(self, interaction: discord.Interaction, button: ui.Button):
@@ -363,10 +396,14 @@ class OxygenTaskView(ui.View):
 class AlignEngineTaskView(ui.View):
     """Align Engine Output"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.aligned = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🔧 Align Left", style=discord.ButtonStyle.secondary, row=0)
     async def align_left(self, interaction: discord.Interaction, button: ui.Button):
@@ -391,11 +428,15 @@ class AlignEngineTaskView(ui.View):
 class CalibrateTaskView(ui.View):
     """Calibrate Distributor - Timing challenge"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.calibrated = 0
         self.total_calibrations = 3
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🎯 Calibrate!", style=discord.ButtonStyle.danger, emoji="⚡")
     async def calibrate(self, interaction: discord.Interaction, button: ui.Button):
@@ -422,11 +463,15 @@ class CalibrateTaskView(ui.View):
 class ChartCourseTaskView(ui.View):
     """Chart Course - Navigate to waypoints"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.waypoints = 0
         self.total_waypoints = 4
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🗺️ Set Waypoint", style=discord.ButtonStyle.primary, emoji="📍")
     async def set_waypoint(self, interaction: discord.Interaction, button: ui.Button):
@@ -449,10 +494,14 @@ class ChartCourseTaskView(ui.View):
 class DivertPowerTaskView(ui.View):
     """Divert Power - Power routing"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.diverted = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🔋 Divert Power", style=discord.ButtonStyle.success, emoji="⚡")
     async def divert(self, interaction: discord.Interaction, button: ui.Button):
@@ -475,11 +524,15 @@ class DivertPowerTaskView(ui.View):
 class UnlockManifoldsTaskView(ui.View):
     """Unlock Manifolds - Spin to unlock"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.unlocked = 0
         self.total_locks = 10
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🔓 Turn Handle", style=discord.ButtonStyle.primary, emoji="🔓")
     async def turn_handle(self, interaction: discord.Interaction, button: ui.Button):
@@ -503,10 +556,14 @@ class UnlockManifoldsTaskView(ui.View):
 class InspectSampleTaskView(ui.View):
     """Inspect Sample - Wait for sample analysis"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME * 6)  # Longer task
         self.on_complete = on_complete
+        self.user_id = user_id
         self.started = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🧪 Start Analysis", style=discord.ButtonStyle.primary, emoji="🧪")
     async def start_analysis(self, interaction: discord.Interaction, button: ui.Button):
@@ -531,11 +588,15 @@ class InspectSampleTaskView(ui.View):
 class SortSamplesTaskView(ui.View):
     """Sort Samples - Organize samples"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.sorted_count = 0
         self.total_samples = 4
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="Red", style=discord.ButtonStyle.danger, emoji="🔴", row=0)
     async def sort_red(self, interaction: discord.Interaction, button: ui.Button):
@@ -575,11 +636,15 @@ class SortSamplesTaskView(ui.View):
 class StabilizeSteeringTaskView(ui.View):
     """Stabilize Steering - Keep crosshair centered"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.stability = 0
         self.target_stability = 5
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🎮 Stabilize", style=discord.ButtonStyle.success, emoji="🎯")
     async def stabilize(self, interaction: discord.Interaction, button: ui.Button):
@@ -602,10 +667,14 @@ class StabilizeSteeringTaskView(ui.View):
 class SwipeCardTaskView(ui.View):
     """Swipe Card - Timing challenge"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.attempts = 0
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="💳 Swipe Card", style=discord.ButtonStyle.primary, emoji="💳")
     async def swipe_card(self, interaction: discord.Interaction, button: ui.Button):
@@ -628,10 +697,14 @@ class SwipeCardTaskView(ui.View):
 class UploadDataTaskView(ui.View):
     """Upload Data - Upload progress"""
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
         self.started = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="📤 Start Upload", style=discord.ButtonStyle.primary, emoji="📤")
     async def start_upload(self, interaction: discord.Interaction, button: ui.Button):
@@ -660,9 +733,13 @@ class UploadDataTaskView(ui.View):
 
 class MonitorTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="📹 Check Cameras", style=discord.ButtonStyle.primary, emoji="📹")
     async def check_cameras(self, interaction: discord.Interaction, button: ui.Button):
@@ -682,9 +759,13 @@ class MonitorTaskView(ui.View):
 
 class ScanTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🔬 Start Diagnostics", style=discord.ButtonStyle.primary, emoji="🔬")
     async def start_scan(self, interaction: discord.Interaction, button: ui.Button):
@@ -704,9 +785,13 @@ class ScanTaskView(ui.View):
 
 class OrganizeTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="📦 Organize Items", style=discord.ButtonStyle.primary, emoji="📦")
     async def organize(self, interaction: discord.Interaction, button: ui.Button):
@@ -726,9 +811,13 @@ class OrganizeTaskView(ui.View):
 
 class AdjustTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="⚙️ Adjust Settings", style=discord.ButtonStyle.primary, emoji="⚙️")
     async def adjust(self, interaction: discord.Interaction, button: ui.Button):
@@ -748,9 +837,13 @@ class AdjustTaskView(ui.View):
 
 class RepairTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🔧 Repair System", style=discord.ButtonStyle.primary, emoji="🔧")
     async def repair(self, interaction: discord.Interaction, button: ui.Button):
@@ -770,9 +863,13 @@ class RepairTaskView(ui.View):
 
 class CalibrateNavTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="🧭 Calibrate", style=discord.ButtonStyle.primary, emoji="🧭")
     async def calibrate_nav(self, interaction: discord.Interaction, button: ui.Button):
@@ -792,9 +889,13 @@ class CalibrateNavTaskView(ui.View):
 
 class CheckOxygenTaskView(ui.View):
 
-    def __init__(self, on_complete: Callable):
+    def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
 
     @ui.button(label="💨 Check Levels", style=discord.ButtonStyle.primary, emoji="💨")
     async def check_oxygen(self, interaction: discord.Interaction, button: ui.Button):
@@ -828,7 +929,7 @@ def generate_tasks_for_player(count: Optional[int] = None) -> list[Task]:
     return tasks
 
 
-def get_task_view(task: Task, on_complete: Callable) -> Optional[ui.View]:
+def get_task_view(task: Task, on_complete: Callable, user_id: int) -> Optional[ui.View]:
     """Get the interactive view for a task"""
     views = {
         "wiring": WiringTaskView,
@@ -861,6 +962,6 @@ def get_task_view(task: Task, on_complete: Callable) -> Optional[ui.View]:
 
     view_class = views.get(task.task_type)
     if view_class:
-        return view_class(on_complete)
+        return view_class(on_complete, user_id)
     return None
 

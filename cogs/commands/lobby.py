@@ -44,7 +44,7 @@ class LobbyCog(commands.Cog):
         name="create", description="Create an Among Us lobby in this channel"
     )
     @app_commands.describe(
-        max_players="Maximum number of players (default: 10, range: 4-15)",
+        max_players="Maximum number of players (default: 10)",
         impostors="Number of impostors (default: 1)",
         scientists="Number of Scientists (default: 0)",
         engineers="Number of Engineers (default: 0)"
@@ -71,33 +71,13 @@ class LobbyCog(commands.Cog):
             )
             return
 
-        if max_players < 4:
+        if max_players < 1:
             await interaction.followup.send(
-                "❌ Maximum players must be at least 4!", ephemeral=True
+                "❌ Maximum players must be at least 1!", ephemeral=True
             )
             return
 
-        if max_players > 15:
-            await interaction.followup.send(
-                "❌ Maximum players cannot exceed 15!", ephemeral=True
-            )
-            return
-
-        max_impostors = max(1, max_players // 3)
-        if impostors < 1:
-            await interaction.followup.send(
-                "❌ Must have at least 1 impostor!", ephemeral=True
-            )
-            return
-
-        if impostors > max_impostors:
-            await interaction.followup.send(
-                f"❌ Too many impostors! Maximum for {max_players} players is {max_impostors}.",
-                ephemeral=True,
-            )
-            return
-
-        if scientists < 0 or engineers < 0:
+        if impostors < 0 or scientists < 0 or engineers < 0:
             await interaction.followup.send(
                 "❌ Role counts cannot be negative!", ephemeral=True
             )
