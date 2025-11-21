@@ -50,7 +50,6 @@ The bot exposes several application commands (slash commands). Examples include:
 - `/join` and `/leave` to manage player participation
 - `/kill` and `/killcooldown` for impostor kill actions
 - `/map` to render the current map
-- `/reportbody` to call meetings when a body is found
 - `/fixsabotage` to resolve active sabotages
 - `/vent` to use vents as an impostor
 - `/status` to check game status

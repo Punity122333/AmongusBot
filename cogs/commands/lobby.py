@@ -47,9 +47,10 @@ class LobbyCog(commands.Cog):
         max_players="Maximum number of players (default: 10)",
         impostors="Number of impostors (default: 1)",
         scientists="Number of Scientists (default: 0)",
-        engineers="Number of Engineers (default: 0)"
+        engineers="Number of Engineers (default: 0)",
+        guardian_angels="Number of Guardian Angels (default: 0)"
     )
-    async def create(self, interaction: discord.Interaction, max_players: int = 10, impostors: int = 1, scientists: int = 0, engineers: int = 0):
+    async def create(self, interaction: discord.Interaction, max_players: int = 10, impostors: int = 1, scientists: int = 0, engineers: int = 0, guardian_angels: int = 0):
         if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 "This command must be used in a server text channel.", ephemeral=True
@@ -77,13 +78,13 @@ class LobbyCog(commands.Cog):
             )
             return
 
-        if impostors < 0 or scientists < 0 or engineers < 0:
+        if impostors < 0 or scientists < 0 or engineers < 0 or guardian_angels < 0:
             await interaction.followup.send(
                 "❌ Role counts cannot be negative!", ephemeral=True
             )
             return
 
-        total_special_roles = impostors + scientists + engineers
+        total_special_roles = impostors + scientists + engineers + guardian_angels
         if total_special_roles > max_players:
             await interaction.followup.send(
                 f"❌ Total special roles ({total_special_roles}) exceeds max players ({max_players})!",
@@ -96,7 +97,7 @@ class LobbyCog(commands.Cog):
         game_code = ''.join(random.choices(string.ascii_uppercase, k=6))
         
         game = await self.game_manager.create_game(
-            interaction.guild.id, ch_id, game_code, max_players, impostors, scientists, engineers
+            interaction.guild.id, ch_id, game_code, max_players, impostors, scientists, engineers, guardian_angels
         )
 
         crewmate_count = max_players - total_special_roles
@@ -108,6 +109,7 @@ class LobbyCog(commands.Cog):
             f"🔪 Impostors: **{impostors}**\n"
             f"🧪 Scientists: **{scientists}**\n"
             f"🔧 Engineers: **{engineers}**\n"
+            f"😇 Guardian Angels: **{guardian_angels}**\n"
             f"👷 Crewmates: **{crewmate_count}**\n\n"
             f"Players can join with `/join {game.game_code}`\n"
             f"Start the game with `/start` when ready!"
@@ -155,12 +157,14 @@ class LobbyCog(commands.Cog):
             current_impostors = sum(1 for p in game.players.values() if p.role == 'Impostor')
             current_scientists = sum(1 for p in game.players.values() if p.role == 'Scientist')
             current_engineers = sum(1 for p in game.players.values() if p.role == 'Engineer')
+            current_guardian_angels = sum(1 for p in game.players.values() if p.role == 'Guardian Angel')
 
             available_roles = []
             
             remaining_impostors = game.impostor_count - current_impostors
             remaining_scientists = game.scientist_count - current_scientists
             remaining_engineers = game.engineer_count - current_engineers
+            remaining_guardian_angels = game.guardian_angel_count - current_guardian_angels
             
             for _ in range(remaining_impostors):
                 available_roles.append('Impostor')
@@ -168,8 +172,10 @@ class LobbyCog(commands.Cog):
                 available_roles.append('Scientist')
             for _ in range(remaining_engineers):
                 available_roles.append('Engineer')
+            for _ in range(remaining_guardian_angels):
+                available_roles.append('Guardian Angel')
             
-            remaining_special_slots = remaining_impostors + remaining_scientists + remaining_engineers
+            remaining_special_slots = remaining_impostors + remaining_scientists + remaining_engineers + remaining_guardian_angels
             total_assigned = len(game.players)
             remaining_crewmate_slots = game.max_players - total_assigned - remaining_special_slots
             
@@ -202,6 +208,7 @@ class LobbyCog(commands.Cog):
                 'Impostor': '🔪',
                 'Scientist': '🧪',
                 'Engineer': '🔧',
+                'Guardian Angel': '😇',
                 'Crewmate': '👷'
             }.get(assigned_role, '👷')
 
@@ -232,6 +239,14 @@ class LobbyCog(commands.Cog):
                     f"🔧 **Your Mission:** Complete tasks and use vents to move quickly!\n"
                     f"You can use vents like impostors.\n"
                     f"Sabotage fix speed: **2x**\n\n"
+                    f"Wait for `/start` to begin!"
+                )
+            elif assigned_role == 'Guardian Angel':
+                description_base += (
+                    f"😇 **Your Mission:** Complete tasks and protect crewmates!\n"
+                    f"You can cast shields on yourself or others.\n"
+                    f"Shields: **2 available**\n"
+                    f"Use `/shield <player>` to protect someone from kills!\n\n"
                     f"Wait for `/start` to begin!"
                 )
             else:

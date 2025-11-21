@@ -85,6 +85,7 @@ class GameStartCog(commands.Cog):
 
         scientist_count = sum(1 for p in game.players.values() if p.role == 'Scientist')
         engineer_count = sum(1 for p in game.players.values() if p.role == 'Engineer')
+        guardian_angel_count = sum(1 for p in game.players.values() if p.role == 'Guardian Angel')
         impostor_count = sum(1 for p in game.players.values() if p.role == 'Impostor')
 
         for impostor in game.players.values():
@@ -133,6 +134,8 @@ class GameStartCog(commands.Cog):
             role_summary += f"🧪 Scientists: {scientist_count}\n"
         if engineer_count > 0:
             role_summary += f"🔧 Engineers: {engineer_count}\n"
+        if guardian_angel_count > 0:
+            role_summary += f"😇 Guardian Angels: {guardian_angel_count}\n"
 
         await interaction.followup.send(role_summary)
 

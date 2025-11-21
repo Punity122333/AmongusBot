@@ -38,19 +38,15 @@ class MapCog(commands.Cog):
         
         player = game.players[uid]
         
-        if not player.alive:
-            await interaction.followup.send("❌ Ghosts cannot move between rooms!", ephemeral=True)
-            return
-        
-        # Check if doors are sabotaged
         if hasattr(game, 'active_sabotage') and game.active_sabotage == 'doors':
-            await interaction.followup.send(
-                "🚪 **DOORS LOCKED!**\n\n"
-                "Movement is restricted due to the doors sabotage.\n"
-                "Wait for the doors to unlock automatically or for someone to fix the sabotage!",
-                ephemeral=True
-            )
-            return
+            if player.alive:
+                await interaction.followup.send(
+                    "🚪 **DOORS LOCKED!**\n\n"
+                    "Movement is restricted due to the doors sabotage.\n"
+                    "Wait for the doors to unlock automatically or for someone to fix the sabotage!",
+                    ephemeral=True
+                )
+                return
         
         current_location = player.location
         
@@ -69,19 +65,23 @@ class MapCog(commands.Cog):
             return
         
         if not game.map_layout.is_connected(current_location, actual_room_name):
-            await interaction.followup.send(
-                f"❌ You cannot move from **{current_location}** to **{actual_room_name}**!\n"
-                f"You can only move to: {', '.join(game.get_room(current_location).connected_rooms)}",
-                ephemeral=True
-            )
-            return
+            if not player.alive:
+                pass
+            else:
+                await interaction.followup.send(
+                    f"❌ You cannot move from **{current_location}** to **{actual_room_name}**!\n"
+                    f"You can only move to: {', '.join(game.get_room(current_location).connected_rooms)}",
+                    ephemeral=True
+                )
+                return
         
         success = game.move_player(uid, actual_room_name)
         
         if success:
-            await interaction.followup.send(f"✅ Moved from **{current_location}** → **{actual_room_name}**", ephemeral=True)
+            ghost_prefix = "👻 " if not player.alive else ""
+            await interaction.followup.send(f"{ghost_prefix}✅ Moved from **{current_location}** → **{actual_room_name}**", ephemeral=True)
             
-            if target_room_obj.bodies and not player.is_bot:
+            if target_room_obj.bodies and not player.is_bot and player.alive:
                 channel = interaction.channel
                 if isinstance(channel, discord.TextChannel):
                     for body_name in target_room_obj.bodies:

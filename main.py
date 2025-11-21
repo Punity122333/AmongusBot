@@ -8,8 +8,8 @@ from amongus.database import GameDatabase
 from amongus.game_manager import GameManager
 
 load_dotenv()
-TOKEN = os.getenv('DC2')
-APPLICATION_ID = os.getenv('AP2')
+TOKEN = os.getenv('DC3')
+APPLICATION_ID = os.getenv('AP3')
 DEV_GUILD_ID = os.getenv('DEV_GUILD_ID')
 DEV_GUILD_IDS = [gid.strip() for gid in DEV_GUILD_ID.split(',')] if DEV_GUILD_ID else []
 
@@ -30,6 +30,7 @@ COG_PATHS = [
     'cogs.commands.game_map',
     'cogs.commands.game_bodies',
     'cogs.commands.game_impostors',
+    'cogs.commands.game_shield',
     'cogs.commands.tasks_cmd',
     'cogs.commands.debug',
     'cogs.events.listeners',

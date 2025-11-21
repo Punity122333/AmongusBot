@@ -356,12 +356,9 @@ async def check_and_announce_winner(
         await channel.send(message)
         
         channel_id = game.channel_id
-        game_manager = None
         
         if bot and hasattr(bot, 'game_manager'):
             game_manager = bot.game_manager
-        
-        if game_manager:
             try:
                 await game_manager.delete_game(channel_id)
                 print(f'✅ Deleted game from database for channel {channel_id}')
@@ -371,6 +368,7 @@ async def check_and_announce_winner(
         if bot and hasattr(bot, 'amongus_games'):
             if channel_id in bot.amongus_games:
                 del bot.amongus_games[channel_id]
+                print(f'✅ Removed game from cache for channel {channel_id}')
         
         return True
 

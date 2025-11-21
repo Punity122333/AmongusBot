@@ -79,6 +79,7 @@ class TasksCog(commands.Cog):
             'Crewmate': '👷',
             'Scientist': '🧪',
             'Engineer': '🔧',
+            'Guardian Angel': '😇',
             'Impostor': '🔪'
         }.get(player.role, '👷')
 
@@ -126,6 +127,12 @@ class TasksCog(commands.Cog):
             embed.add_field(
                 name="🔧 Engineer Bonus",
                 value="You can use vents and fix sabotages 2x faster!",
+                inline=False
+            )
+        elif player.role == 'Guardian Angel':
+            embed.add_field(
+                name="😇 Guardian Angel Ability",
+                value=f"You can shield players from attacks!\nShields remaining: **{player.shields_remaining}/2**",
                 inline=False
             )
         

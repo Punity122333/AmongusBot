@@ -139,10 +139,60 @@ class KillView(ui.View):
         async def callback(interaction: discord.Interaction):
             await interaction.response.defer()
             
+            if hasattr(target, 'shielded') and target.shielded:
+                shield_guardian = None
+                if hasattr(target, 'shielded_by') and target.shielded_by:
+                    shield_guardian = self.game.players.get(target.shielded_by)
+                
+                target.shielded = False
+                target.shielded_by = None
+                
+                await interaction.edit_original_response(
+                    content=f"🛡️ **Shield Blocked!**\n\n**{target.name}** was protected by a Guardian Angel's shield!\nThe kill was prevented, but the shield is now broken.",
+                    view=None
+                )
+                
+                if shield_guardian and not shield_guardian.is_bot:
+                    try:
+                        guild = interaction.guild
+                        if guild:
+                            guardian_user = guild.get_member(shield_guardian.user_id)
+                            if guardian_user:
+                                embed = discord.Embed(
+                                    title="🛡️ Shield Blocked Attack!",
+                                    description=f"Your shield on **{target.name}** blocked an attack from an impostor!\n\nThe shield has been broken, but **{target.name}** is safe.",
+                                    color=discord.Color.gold()
+                                )
+                                await safe_dm_user(guardian_user, embed=embed)
+                    except Exception as e:
+                        print(f"Error notifying guardian: {e}")
+                
+                if not target.is_bot:
+                    try:
+                        guild = interaction.guild
+                        if guild:
+                            protected_user = guild.get_member(target.user_id)
+                            if protected_user:
+                                embed = discord.Embed(
+                                    title="🛡️ You Were Protected!",
+                                    description=f"A Guardian Angel's shield saved you from an impostor attack!\n\nThe shield is now broken, but you're still alive.",
+                                    color=discord.Color.gold()
+                                )
+                                await safe_dm_user(protected_user, embed=embed)
+                    except Exception as e:
+                        print(f"Error notifying protected player: {e}")
+                
+                self.stop()
+                return
+            
             target.alive = False
             self.killer.kill_cooldown = self.game.kill_cooldown
 
             self.game.add_body_to_room(self.killer.location, target.name)
+            
+            # Update global kill timestamp
+            import time
+            self.game.last_kill_time = time.time()
 
             witnesses = [
                 p for p in self.game.players.values() 
@@ -336,6 +386,17 @@ class KillCog(commands.Cog):
         if player.kill_cooldown > 0:
             await interaction.response.send_message(
                 f"⏳ Kill on cooldown! {player.kill_cooldown}s remaining",
+                ephemeral=True,
+            )
+            return
+        
+        # Check global kill cooldown (10 seconds between any kills)
+        import time
+        time_since_last_kill = time.time() - game.last_kill_time
+        if time_since_last_kill < 8:
+            remaining = int(8 - time_since_last_kill)
+            await interaction.response.send_message(
+                f"⏳ Another impostor just killed recently! Wait {remaining}s before killing again.",
                 ephemeral=True,
             )
             return

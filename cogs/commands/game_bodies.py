@@ -34,6 +34,11 @@ async def teleport_and_report_body(
     if game.phase != 'tasks':
         return
     
+    # Check global body report cooldown (10 seconds between any body reports)
+    time_since_last_report = time.time() - game.last_body_report_time
+    if time_since_last_report < 10:
+        return
+    
     alive_non_impostors = [
         p for p in game.alive_players()
         if p.role != "Impostor" and p.user_id != victim.user_id and p.is_bot
@@ -57,6 +62,9 @@ async def teleport_and_report_body(
         game.nearby_players_last_meeting = nearby_players
         
         room.remove_body(victim.name)
+        
+        # Update global body report timestamp
+        game.last_body_report_time = time.time()
         
         await channel.send(
             f"🚨 **{reporter.name}** discovered **{victim.name}'s** body and called an emergency meeting!"
@@ -150,6 +158,11 @@ async def schedule_impostor_self_report(
     if game.phase != 'tasks':
         return
     
+    # Check global body report cooldown (10 seconds between any body reports)
+    time_since_last_report = time.time() - game.last_body_report_time
+    if time_since_last_report < 10:
+        return
+    
     try:
         room = game.get_room(body_location)
         if not room or victim.name not in room.bodies:
@@ -160,6 +173,9 @@ async def schedule_impostor_self_report(
         game.nearby_players_last_meeting = nearby_players
         
         room.remove_body(victim.name)
+        
+        # Update global body report timestamp
+        game.last_body_report_time = time.time()
         
         await channel.send(
             f"🚨 **{impostor.name}** discovered **{victim.name}'s** body and called an emergency meeting!"
@@ -485,99 +501,5 @@ def _get_nearby_players(game, victim, discoverer) -> list[str]:
     return nearby_players
 
 
-class BodyReportCog(commands.Cog):
-
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        self.games = getattr(bot, "amongus_games", {})
-
-    async def cog_load(self):
-        pass
-
-    @app_commands.command(name='reportbody', description='Report a body and call an emergency meeting')
-    async def reportbody(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        
-        ch_id = interaction.channel_id
-        uid = interaction.user.id
-        
-        if ch_id not in self.games:
-            await interaction.followup.send("❌ No active game in this channel!", ephemeral=True)
-            return
-        
-        game = self.games[ch_id]
-        
-        if game.phase != 'tasks':
-            await interaction.followup.send("❌ You can only report bodies during the task phase!", ephemeral=True)
-            return
-        
-        if uid not in game.players:
-            await interaction.followup.send("❌ You are not in this game!", ephemeral=True)
-            return
-        
-        player = game.players[uid]
-        
-        if not player.alive:
-            await interaction.followup.send("❌ Ghosts cannot report bodies!", ephemeral=True)
-            return
-
-        
-        time_since_start = time.time() - game.game_start_time
-        if time_since_start < 100:
-            remaining = int(100 - time_since_start)
-            await interaction.followup.send(
-                f"⏳ Cannot report bodies yet! Wait {remaining}s after game start to call meetings.",
-                ephemeral=True
-            )
-            return
-        
-        current_room_obj = game.get_room(player.location)
-        
-        if not current_room_obj or not current_room_obj.bodies:
-            await interaction.followup.send(
-                f"❌ There are no bodies in **{player.location}**!",
-                ephemeral=True
-            )
-            return
-        
-        if isinstance(interaction.channel, discord.TextChannel):
-            game.phase = 'meeting'
-            
-            body_names = ", ".join(current_room_obj.bodies)
-            
-            nearby_players = _get_nearby_players(game, None, player)
-            game.nearby_players_last_meeting = nearby_players
-            
-            current_room_obj.clear_bodies()
-            
-            card_buffer = await create_emergency_meeting_card()
-            file = discord.File(card_buffer, filename="meeting.png")
-            
-            embed = discord.Embed(
-                title="🚨 BODY REPORTED! 🚨",
-                description=f"**{player.name}** discovered {body_names}'s body in **{player.location}**!",
-                color=discord.Color.red()
-            )
-            embed.set_image(url="attachment://meeting.png")
-            embed.add_field(
-                name="Meeting Started",
-                value="Discuss who you think the impostor is and vote using `/vote <player_name>`",
-                inline=False
-            )
-            
-            await interaction.channel.send(embed=embed, file=file)
-            
-            if nearby_players:
-                players_list = ", ".join([f"**{p}**" for p in nearby_players])
-                await interaction.channel.send(
-                    f"🗣️ **{player.name}** says: \"I saw {players_list} near the body!\""
-                )
-            
-            await interaction.followup.send("✅ You reported the body and called a meeting!", ephemeral=True)
-            
-            from .game_meeting import trigger_meeting
-            await trigger_meeting(game, interaction.channel, f"{player.name} (found body)", self.bot)
-
 async def setup(bot: commands.Bot):
-    """Classic (synchronous) setup for extension loader compatibility."""
-    await bot.add_cog(BodyReportCog(bot))
+    pass

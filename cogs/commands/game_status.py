@@ -46,9 +46,10 @@ class GameStatusCog(commands.Cog):
         alive_crewmates = [p for p in alive_players if p.role == 'Crewmate']
         alive_scientists = [p for p in alive_players if p.role == 'Scientist']
         alive_engineers = [p for p in alive_players if p.role == 'Engineer']
+        alive_guardian_angels = [p for p in alive_players if p.role == 'Guardian Angel']
         alive_impostors = game.alive_impostors()
         
-        total_crew_alive = len(alive_crewmates) + len(alive_scientists) + len(alive_engineers)
+        total_crew_alive = len(alive_crewmates) + len(alive_scientists) + len(alive_engineers) + len(alive_guardian_angels)
         
         embed = discord.Embed(
             title="🎮 Game Status",
@@ -75,6 +76,7 @@ class GameStatusCog(commands.Cog):
             value=f"👷 Crewmates: {len(alive_crewmates)}\n" +
                   (f"🧪 Scientists: {len(alive_scientists)}\n" if len(alive_scientists) > 0 else "") +
                   (f"🔩 Engineers: {len(alive_engineers)}\n" if len(alive_engineers) > 0 else "") +
+                  (f"😇 Guardian Angels: {len(alive_guardian_angels)}\n" if len(alive_guardian_angels) > 0 else "") +
                   f"**Total: {total_crew_alive}**",
             inline=True
         )

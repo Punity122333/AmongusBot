@@ -36,6 +36,11 @@ class Player:
         self.task_speed_multiplier = 1.0
         self.sabotage_fix_speed = 1.0
         
+        self.shielded = False
+        self.shielded_by = None
+        self.shield_cooldown = 0
+        self.shields_remaining = 2
+        
     @property
     def completed_tasks(self) -> int:
         return sum(1 for task in self.tasks if task.completed)
@@ -61,6 +66,10 @@ class Player:
             self.role_type = 'Engineer'
             self.can_vent = True
             self.sabotage_fix_speed = 2.0
+        elif role == 'Guardian Angel':
+            self.role_type = 'Guardian Angel'
+            self.shields_remaining = 2
+            self.shield_cooldown = 0
         else:
             self.role_type = 'Crewmate'
 
@@ -95,7 +104,7 @@ class Player:
 
 
 class AmongUsGame:
-    def __init__(self, guild_id: int, channel_id: int, max_players: int = MAX_PLAYERS, impostors: int = 1, scientists: int = 0, engineers: int = 0):
+    def __init__(self, guild_id: int, channel_id: int, max_players: int = MAX_PLAYERS, impostors: int = 1, scientists: int = 0, engineers: int = 0, guardian_angels: int = 0):
         self.guild_id = guild_id
         self.channel_id = channel_id
         self.max_players = max_players
@@ -115,8 +124,13 @@ class AmongUsGame:
         self.impostor_count = impostors
         self.scientist_count = scientists
         self.engineer_count = engineers
+        self.guardian_angel_count = guardian_angels
         
         self.background_tasks: Set[asyncio.Task] = set()
+        
+        # Global cooldowns for kill and body reporting
+        self.last_kill_time = 0.0  # Timestamp of last kill by any impostor
+        self.last_body_report_time = 0.0  # Timestamp of last body report by any player
         
         self.map_layout = MapLayout()
 
@@ -176,33 +190,36 @@ class AmongUsGame:
                             dummy_list[i * 2].location = target_room
                             dummy_list[i * 2 + 1].location = target_room
 
-    async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0):
+    async def assign_roles(self, impostor_count: int = 1, scientists: int = 0, engineers: int = 0, guardian_angels: int = 0):
         ids = list(self.players.keys())
         random.shuffle(ids)
         impostor_count = min(impostor_count, max(1, len(ids) // 3))
         self.impostors = ids[:impostor_count]
         
-        # Calculate special role counts
         max_special = max(0, len(ids) - impostor_count)
-        scientists = min(scientists, max_special // 2)
+        scientists = min(scientists, max_special // 3)
         engineers = min(engineers, max_special - scientists)
+        guardian_angels = min(guardian_angels, max_special - scientists - engineers)
         
-        # Assign roles
         remaining_ids = [uid for uid in ids if uid not in self.impostors]
         random.shuffle(remaining_ids)
         
         scientist_ids = remaining_ids[:scientists]
         engineer_ids = remaining_ids[scientists:scientists + engineers]
+        guardian_angel_ids = remaining_ids[scientists + engineers:scientists + engineers + guardian_angels]
         
         for uid, player in self.players.items():
             if uid in self.impostors:
                 player.assign_role('Impostor')
-                player.assign_tasks()  # Give impostors fake tasks to blend in
+                player.assign_tasks()
             elif uid in scientist_ids:
                 player.assign_role('Scientist')
                 player.assign_tasks()
             elif uid in engineer_ids:
                 player.assign_role('Engineer')
+                player.assign_tasks()
+            elif uid in guardian_angel_ids:
+                player.assign_role('Guardian Angel')
                 player.assign_tasks()
             else:
                 player.assign_role('Crewmate')
@@ -212,7 +229,7 @@ class AmongUsGame:
         return [p for p in self.players.values() if p.alive]
     
     def alive_crewmates(self):
-        return [p for p in self.alive_players() if p.role in ['Crewmate', 'Scientist', 'Engineer']]
+        return [p for p in self.alive_players() if p.role in ['Crewmate', 'Scientist', 'Engineer', 'Guardian Angel']]
     
     def alive_impostors(self):
         return [p for p in self.alive_players() if p.role == 'Impostor']
@@ -220,15 +237,14 @@ class AmongUsGame:
     def check_win(self):
         alive = self.alive_players()
         impostors_alive = [p for p in alive if p.role == 'Impostor']
-        crewmates_alive = [p for p in alive if p.role in ['Crewmate', 'Scientist', 'Engineer']]
+        crewmates_alive = [p for p in alive if p.role in ['Crewmate', 'Scientist', 'Engineer', 'Guardian Angel']]
         
         if not impostors_alive:
             return 'crewmates'
         if len(crewmates_alive) <= 1:
             return 'impostors'
         
-        # check tasks - all crewmate roles
-        all_crew = [p for p in self.players.values() if p.role in ['Crewmate', 'Scientist', 'Engineer']]
+        all_crew = [p for p in self.players.values() if p.role in ['Crewmate', 'Scientist', 'Engineer', 'Guardian Angel']]
         if all_crew:
             total_tasks = sum(p.total_tasks for p in all_crew)
             completed = sum(p.completed_tasks for p in all_crew)

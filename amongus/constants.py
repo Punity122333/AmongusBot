@@ -68,7 +68,7 @@ TASK_TYPES = {
     "reactor": {
         "name": "Start Reactor",
         "emoji": "⚛️",
-        "difficulty": "hard",
+        "difficulty": "medium",
         "locations": ["Reactor"],
     },
     "oxygen": {

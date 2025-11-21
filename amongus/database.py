@@ -78,6 +78,7 @@ class GameDatabase:
                 impostor_count INTEGER DEFAULT 1,
                 scientist_count INTEGER DEFAULT 0,
                 engineer_count INTEGER DEFAULT 0,
+                guardian_angel_count INTEGER DEFAULT 0,
                 active_sabotage TEXT,
                 kill_cooldown INTEGER DEFAULT 18,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -104,6 +105,10 @@ class GameDatabase:
                 can_vent INTEGER DEFAULT 0,
                 task_speed_multiplier REAL DEFAULT 1.0,
                 sabotage_fix_speed REAL DEFAULT 1.0,
+                shielded INTEGER DEFAULT 0,
+                shielded_by INTEGER,
+                shield_cooldown INTEGER DEFAULT 0,
+                shields_remaining INTEGER DEFAULT 2,
                 FOREIGN KEY (channel_id) REFERENCES games(channel_id) ON DELETE CASCADE,
                 UNIQUE(channel_id, user_id)
             );
@@ -153,14 +158,13 @@ class GameDatabase:
         await self.connection.commit()
         print("🧹 Temporary game data cleared")
  
-    async def create_game(self, channel_id: int, guild_id: int, game_code: str, max_players: int = 10, impostor_count: int = 1, scientist_count: int = 0, engineer_count: int = 0):
-        """Create a new game"""
+    async def create_game(self, channel_id: int, guild_id: int, game_code: str, max_players: int = 10, impostor_count: int = 1, scientist_count: int = 0, engineer_count: int = 0, guardian_angel_count: int = 0):
         if self.connection is None:
             raise ValueError("Database connection not initialized. Call initialize() first.")
         await self.connection.execute("""
-            INSERT INTO games (channel_id, guild_id, game_code, max_players, impostor_count, scientist_count, engineer_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (channel_id, guild_id, game_code, max_players, impostor_count, scientist_count, engineer_count))
+            INSERT INTO games (channel_id, guild_id, game_code, max_players, impostor_count, scientist_count, engineer_count, guardian_angel_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (channel_id, guild_id, game_code, max_players, impostor_count, scientist_count, engineer_count, guardian_angel_count))
         await self.connection.commit()
     
     async def get_game(self, channel_id: int) -> Optional[Dict[str, Any]]:

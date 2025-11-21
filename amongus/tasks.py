@@ -307,59 +307,56 @@ class MedbayScanTaskView(ui.View):
 
 
 class ReactorTaskView(ui.View):
-    """Start Reactor - Simon says pattern"""
 
     def __init__(self, on_complete: Callable, user_id: int):
         super().__init__(timeout=TASK_COMPLETION_TIME)
         self.on_complete = on_complete
         self.user_id = user_id
-        self.pattern = [random.randint(1, 5) for _ in range(5)]
-        self.player_input = []
-        self.current_display = 0
+        self.buttons_pressed = 0
+        self.total_buttons = 5
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.user_id
 
-    @ui.button(label="1", style=discord.ButtonStyle.primary, row=0)
-    async def btn_1(self, interaction: discord.Interaction, button: ui.Button):
-        await self._check_pattern(interaction, 1)
+    @ui.button(label="Power Cell 1", style=discord.ButtonStyle.primary, emoji="🔋", row=0)
+    async def button_1(self, interaction: discord.Interaction, button: ui.Button):
+        await self._activate_cell(interaction, button)
 
-    @ui.button(label="2", style=discord.ButtonStyle.primary, row=0)
-    async def btn_2(self, interaction: discord.Interaction, button: ui.Button):
-        await self._check_pattern(interaction, 2)
+    @ui.button(label="Power Cell 2", style=discord.ButtonStyle.primary, emoji="🔋", row=0)
+    async def button_2(self, interaction: discord.Interaction, button: ui.Button):
+        await self._activate_cell(interaction, button)
 
-    @ui.button(label="3", style=discord.ButtonStyle.primary, row=0)
-    async def btn_3(self, interaction: discord.Interaction, button: ui.Button):
-        await self._check_pattern(interaction, 3)
+    @ui.button(label="Power Cell 3", style=discord.ButtonStyle.primary, emoji="🔋", row=1)
+    async def button_3(self, interaction: discord.Interaction, button: ui.Button):
+        await self._activate_cell(interaction, button)
 
-    @ui.button(label="4", style=discord.ButtonStyle.primary, row=1)
-    async def btn_4(self, interaction: discord.Interaction, button: ui.Button):
-        await self._check_pattern(interaction, 4)
+    @ui.button(label="Power Cell 4", style=discord.ButtonStyle.primary, emoji="🔋", row=1)
+    async def button_4(self, interaction: discord.Interaction, button: ui.Button):
+        await self._activate_cell(interaction, button)
 
-    @ui.button(label="5", style=discord.ButtonStyle.primary, row=1)
-    async def btn_5(self, interaction: discord.Interaction, button: ui.Button):
-        await self._check_pattern(interaction, 5)
+    @ui.button(label="Power Cell 5", style=discord.ButtonStyle.primary, emoji="🔋", row=2)
+    async def button_5(self, interaction: discord.Interaction, button: ui.Button):
+        await self._activate_cell(interaction, button)
 
-    async def _check_pattern(self, interaction: discord.Interaction, number: int):
-        self.player_input.append(number)
+    async def _activate_cell(self, interaction: discord.Interaction, button: ui.Button):
+        self.buttons_pressed += 1
+        button.disabled = True
+        button.label = "✓ Activated"
+        button.style = discord.ButtonStyle.success
         
-        if self.player_input[-1] != self.pattern[len(self.player_input) - 1]:
-            await interaction.response.send_message("❌ Wrong sequence! Try again!", ephemeral=True)
-            self.player_input = []
-            return
-        
-        if len(self.player_input) >= len(self.pattern):
+        if self.buttons_pressed >= self.total_buttons:
             await interaction.response.edit_message(
-                content="⚛️ Reactor started! Task complete!",
-                view=None,
+                content="⚛️ All power cells activated! Reactor online! Task complete!",
+                view=self,
             )
             self.stop()
             await self.on_complete()
         else:
             await interaction.response.edit_message(
-                content=f"⚛️ Sequence progress: {len(self.player_input)}/{len(self.pattern)}",
+                content=f"⚛️ Activating reactor power cells... {self.buttons_pressed}/{self.total_buttons}",
                 view=self,
             )
+
 
 
 class OxygenTaskView(ui.View):
